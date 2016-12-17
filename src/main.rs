@@ -1,3 +1,13 @@
+use std::process::Command;
+use std::os::unix::process::CommandExt;
+
 fn main() {
-    println!("Hello, world!");
+    Command::new("java")
+        .arg("-Xms512m")
+        .arg("-Xmx1536m")
+        .arg("-Xss2m")
+        .arg("-jar")
+        .arg("/Users/dnw/.sbt/launchers/0.13.13/sbt-launch.jar")
+        .arg("shell")
+        .exec();
 }
