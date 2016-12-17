@@ -6,8 +6,7 @@ fn main() {
         .arg("-Xms512m")
         .arg("-Xmx1536m")
         .arg("-Xss2m")
-        .arg("-jar")
-        .arg("/Users/dnw/.sbt/launchers/0.13.13/sbt-launch.jar")
+        .args(&["-jar", "/Users/dnw/.sbt/launchers/0.13.13/sbt-launch.jar"])
         .arg("shell")
         .exec();
 }
