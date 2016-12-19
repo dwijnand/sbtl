@@ -2,6 +2,8 @@
 
 cd "$(dirname "$0")/.."
 
+cargo build
+
 [[ $# -gt 0 ]] || set -- ./test
 
 bats="./bats/bin/bats"
