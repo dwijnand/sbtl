@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+cd "$(dirname "$0")/.."
+
+[[ $# -gt 0 ]] || set -- ./test
+
+bats="./bats/bin/bats"
+[[ -x "$bats" ]] || git clone --depth 1 https://github.com/sstephenson/bats.git bats
+"$bats" "$@"
