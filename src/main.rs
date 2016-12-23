@@ -21,14 +21,13 @@ fn main() {
     let extra_jvm_opts = [OsStr::new("-Xms512m"), OsStr::new("-Xmx1536m"), OsStr::new("-Xss2m")];
     let java_args: [&OsStr; 0] = [];
     let sbt_commands: [&OsStr; 0] = [];
-    let residual_args: [&OsStr; 0] = [];
+    let residual_args = [OsStr::new("shell")];
 
     let mut exec_args: Vec<&OsStr> = Vec::new();
     exec_args.push(java_cmd);
     exec_args.extend_from_slice(&extra_jvm_opts);
     exec_args.extend_from_slice(&java_args);
     exec_args.extend_from_slice(&[OsStr::new("-jar"), sbt_jar.as_os_str()]);
-    exec_args.push(OsStr::new("shell"));
     exec_args.extend_from_slice(&sbt_commands);
     exec_args.extend_from_slice(&residual_args);
     let exec_args = exec_args;
