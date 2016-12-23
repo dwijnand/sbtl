@@ -1,4 +1,4 @@
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
 
 fn exec_runner<S: AsRef<OsStr>>(args: &[S]) {
     use std::os::unix::process::CommandExt;
@@ -17,19 +17,17 @@ fn main() {
     sbt_jar.push(".sbt/launchers/0.13.13/sbt-launch.jar");
     let sbt_jar = sbt_jar;
 
-    let extra_jvm_opts = [OsStr::new("-Xms512m").to_os_string(),
-                          OsStr::new("-Xmx1536m").to_os_string(),
-                          OsStr::new("-Xss2m").to_os_string()];
-    let java_args: [OsString; 0] = [];
-    let sbt_commands: [OsString; 0] = [];
-    let residual_args: [OsString; 0] = [];
+    let extra_jvm_opts = [OsStr::new("-Xms512m"), OsStr::new("-Xmx1536m"), OsStr::new("-Xss2m")];
+    let java_args: [&OsStr; 0] = [];
+    let sbt_commands: [&OsStr; 0] = [];
+    let residual_args: [&OsStr; 0] = [];
 
-    let mut exec_args: Vec<OsString> = Vec::new();
-    exec_args.push(OsStr::new("java").to_os_string());
+    let mut exec_args: Vec<&OsStr> = Vec::new();
+    exec_args.push(OsStr::new("java"));
     exec_args.extend_from_slice(&extra_jvm_opts);
     exec_args.extend_from_slice(&java_args);
-    exec_args.extend_from_slice(&[OsStr::new("-jar").to_os_string(), sbt_jar.into_os_string()]);
-    exec_args.push(OsStr::new("shell").to_os_string());
+    exec_args.extend_from_slice(&[OsStr::new("-jar"), sbt_jar.as_os_str()]);
+    exec_args.push(OsStr::new("shell"));
     exec_args.extend_from_slice(&sbt_commands);
     exec_args.extend_from_slice(&residual_args);
     let exec_args = exec_args;
