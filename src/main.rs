@@ -17,13 +17,14 @@ fn main() {
     sbt_jar.push(".sbt/launchers/0.13.13/sbt-launch.jar");
     let sbt_jar = sbt_jar;
 
+    let java_cmd = OsStr::new("java");
     let extra_jvm_opts = [OsStr::new("-Xms512m"), OsStr::new("-Xmx1536m"), OsStr::new("-Xss2m")];
     let java_args: [&OsStr; 0] = [];
     let sbt_commands: [&OsStr; 0] = [];
     let residual_args: [&OsStr; 0] = [];
 
     let mut exec_args: Vec<&OsStr> = Vec::new();
-    exec_args.push(OsStr::new("java"));
+    exec_args.push(java_cmd);
     exec_args.extend_from_slice(&extra_jvm_opts);
     exec_args.extend_from_slice(&java_args);
     exec_args.extend_from_slice(&[OsStr::new("-jar"), sbt_jar.as_os_str()]);
