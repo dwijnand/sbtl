@@ -1,4 +1,30 @@
 use std::ffi::OsStr;
+use std::path::PathBuf;
+
+fn home() -> PathBuf {
+    std::env::home_dir().unwrap()
+}
+
+fn sbt_launch_dir() -> PathBuf {
+    let mut p = PathBuf::from(home());
+    p.push(".sbt/launchers");
+    p
+}
+
+fn jar_file(sbt_version: &str) -> PathBuf {
+    let mut p = PathBuf::from(sbt_launch_dir());
+    p.push(sbt_version);
+    p.push("sbt-launch.jar");
+    p
+}
+
+fn sbt_version() -> String {
+    "0.13.13".to_string()
+}
+
+fn sbt_jar() -> PathBuf {
+    jar_file(&sbt_version())
+}
 
 fn exec_runner<S: AsRef<OsStr>>(args: &[S]) {
     use std::os::unix::process::CommandExt;
@@ -11,11 +37,7 @@ fn exec_runner<S: AsRef<OsStr>>(args: &[S]) {
 }
 
 fn main() {
-    let home = std::env::home_dir().unwrap();
-
-    let mut sbt_jar = std::path::PathBuf::from(home);
-    sbt_jar.push(".sbt/launchers/0.13.13/sbt-launch.jar");
-    let sbt_jar = sbt_jar;
+    let sbt_jar = sbt_jar();
 
     let java_cmd = OsStr::new("java");
     let extra_jvm_opts = [OsStr::new("-Xms512m"), OsStr::new("-Xmx1536m"), OsStr::new("-Xss2m")];
