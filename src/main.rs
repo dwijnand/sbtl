@@ -39,19 +39,19 @@ fn exec_runner<S: AsRef<OsStr>>(args: &[S]) {
 fn main() {
     let sbt_jar = sbt_jar();
 
-    let java_cmd = OsStr::new("java");
-    let extra_jvm_opts = [OsStr::new("-Xms512m"), OsStr::new("-Xmx1536m"), OsStr::new("-Xss2m")];
+    let java_cmd = "java";
+    let extra_jvm_opts = ["-Xms512m", "-Xmx1536m", "-Xss2m"];
     let java_args: [&OsStr; 0] = [];
     let sbt_commands: [&OsStr; 0] = [];
-    let residual_args = [OsStr::new("shell")];
+    let residual_args = ["shell"];
 
     let mut exec_args: Vec<&OsStr> = Vec::new();
-    exec_args.push(java_cmd);
-    exec_args.extend_from_slice(&extra_jvm_opts);
-    exec_args.extend_from_slice(&java_args);
+    exec_args.push(OsStr::new(java_cmd));
+    exec_args.extend_from_slice(&extra_jvm_opts.iter().map(|x| OsStr::new(x)).collect::<Vec<_>>());
+    exec_args.extend_from_slice(&java_args.iter().map(|x| OsStr::new(x)).collect::<Vec<_>>());
     exec_args.extend_from_slice(&[OsStr::new("-jar"), sbt_jar.as_os_str()]);
-    exec_args.extend_from_slice(&sbt_commands);
-    exec_args.extend_from_slice(&residual_args);
+    exec_args.extend_from_slice(&sbt_commands.iter().map(|x| OsStr::new(x)).collect::<Vec<_>>());
+    exec_args.extend_from_slice(&residual_args.iter().map(|x| OsStr::new(x)).collect::<Vec<_>>());
     let exec_args = exec_args;
 
     exec_runner(&exec_args)
