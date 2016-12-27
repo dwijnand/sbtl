@@ -3,8 +3,6 @@
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
-const build_props: &'static str = "project/build.properties";
-
 fn home() -> PathBuf {
     std::env::home_dir().unwrap()
 }
@@ -15,8 +13,12 @@ fn sbt_launch_dir() -> PathBuf {
     p
 }
 
+fn build_props() -> PathBuf {
+    PathBuf::from("project/build.properties")
+}
+
 fn build_props_sbt() -> String {
-    if let Ok(f) = std::fs::File::open(build_props) {
+    if let Ok(f) = std::fs::File::open(build_props()) {
         let f = std::io::BufReader::new(f);
 
         use std::io::BufRead;
