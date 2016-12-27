@@ -1,5 +1,9 @@
+#![allow(non_upper_case_globals)]
+
 use std::ffi::OsStr;
 use std::path::PathBuf;
+
+const build_props: &'static str = "project/build.properties";
 
 fn home() -> PathBuf {
     std::env::home_dir().unwrap()
@@ -11,19 +15,28 @@ fn sbt_launch_dir() -> PathBuf {
     p
 }
 
+fn build_props_sbt() -> String {
+    if let Ok(f) = std::fs::File::open(build_props) {
+        let f = std::io::BufReader::new(f);
+
+        use std::io::BufRead;
+        for line in f.lines() {
+            let line = line.unwrap();
+            if line.starts_with("sbt.version") {
+                let line = line.replace("=", " ");
+                let line = line.replace("\r", " ");
+                return line.split_whitespace().nth(1).unwrap().to_owned();
+            }
+        }
+    }
+    "".to_owned()
+}
+
 fn jar_file(sbt_version: &str) -> PathBuf {
     let mut p = PathBuf::from(sbt_launch_dir());
     p.push(sbt_version);
     p.push("sbt-launch.jar");
     p
-}
-
-fn sbt_version() -> String {
-    "0.13.13".to_string()
-}
-
-fn sbt_jar() -> PathBuf {
-    jar_file(&sbt_version())
 }
 
 fn exec_runner<S: AsRef<OsStr>>(args: &[S]) {
@@ -37,7 +50,8 @@ fn exec_runner<S: AsRef<OsStr>>(args: &[S]) {
 }
 
 fn main() {
-    let sbt_jar = sbt_jar();
+    let sbt_version = build_props_sbt();
+    let sbt_jar = jar_file(&sbt_version);
 
     let java_cmd = "java";
     let extra_jvm_opts = ["-Xms512m", "-Xmx1536m", "-Xss2m"];
