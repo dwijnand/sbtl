@@ -34,9 +34,9 @@ fn build_props_sbt() -> String {
     "".to_owned()
 }
 
-fn jar_file(sbt_version: &str) -> PathBuf {
+fn jar_file(version: &str) -> PathBuf {
     let mut p = PathBuf::from(sbt_launch_dir());
-    p.push(sbt_version);
+    p.push(version);
     p.push("sbt-launch.jar");
     p
 }
@@ -61,14 +61,16 @@ fn main() {
     let sbt_commands: [&str; 0] = [];
     let residual_args = ["shell"];
 
-    let mut exec_args: Vec<&OsStr> = Vec::new();
-    exec_args.push(java_cmd.as_ref());
-    exec_args.extend_from_slice(&extra_jvm_opts.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
-    exec_args.extend_from_slice(&java_args.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
-    exec_args.extend_from_slice(&["-jar".as_ref(), sbt_jar.as_ref()]);
-    exec_args.extend_from_slice(&sbt_commands.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
-    exec_args.extend_from_slice(&residual_args.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
-    let exec_args = exec_args;
+    let exec_args: Vec<&OsStr> = {
+        let mut exec_args = Vec::new();
+        exec_args.push(java_cmd.as_ref());
+        exec_args.extend_from_slice(&extra_jvm_opts.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
+        exec_args.extend_from_slice(&java_args.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
+        exec_args.extend_from_slice(&["-jar".as_ref(), sbt_jar.as_ref()]);
+        exec_args.extend_from_slice(&sbt_commands.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
+        exec_args.extend_from_slice(&residual_args.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
+        exec_args
+    };
 
     exec_runner(&exec_args)
 }
