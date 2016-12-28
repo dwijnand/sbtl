@@ -5,6 +5,14 @@ load test_helper
 setup()    { create_project; stub_java_echo; }
 teardown() { unstub java; rm -fr "$TEST_ROOT"/* "$TEST_ROOT"/.sbt; }
 
+launcher_url () {
+  case "$1" in
+    0.7.*) echo "http://simple-build-tool.googlecode.com/files/sbt-launch-$1.jar" ;;
+   0.10.*) echo "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/$1/sbt-launch.jar" ;;
+        *) echo "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/$1/sbt-launch.jar" ;;
+  esac
+}
+
 write_to_properties_and_launch ()         { write_to_properties "$1" && shift && launch_launcher "$@"; }
 write_version_to_properties_and_launch () { write_version_to_properties "$1" && launch_launcher "$@"; }
 no_properties_and_launch ()               { assert [ ! -f "$test_build_properties" ] && launch_launcher "$@"; }
@@ -14,6 +22,9 @@ launch_launcher() {
   run sbt "$@"
   assert_success
   assert_output <<EOS
+Downloading sbt launcher for $version:
+  From  $(launcher_url $version)
+    To  $TEST_ROOT/.sbt/launchers/$version/sbt-launch.jar
 java
 -Xms512m
 -Xmx1536m
