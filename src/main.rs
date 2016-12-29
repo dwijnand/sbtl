@@ -2,32 +2,24 @@
 //#![allow(dead_code)]
 
 use std::ffi::OsStr;
-use std::io::Write;
+use std::fs::File;
+use std::io::BufReader;
+use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
-fn home() -> PathBuf {
-    std::env::home_dir().unwrap()
-}
+fn build_props() -> PathBuf { PathBuf::from("project/build.properties") }
 
-macro_rules! echoerr(
-    ($($arg:tt)*) => (writeln!(&mut ::std::io::stderr(), $($arg)*).expect("failed printing to stderr");)
-);
+const sbt_launch_ivy_release_repo: &'static str = "http://repo.typesafe.com/typesafe/ivy-releases";
+const sbt_launch_mvn_release_repo: &'static str = "http://repo.scala-sbt.org/scalasbt/maven-releases";
 
-fn sbt_launch_dir() -> PathBuf {
-    let mut p = PathBuf::from(home());
-    p.push(".sbt/launchers");
-    p
-}
+fn home()           -> PathBuf { std::env::home_dir().unwrap() }
+fn sbt_launch_dir() -> PathBuf { let mut p = PathBuf::from(home()); p.push(".sbt/launchers"); p }
 
-fn build_props() -> PathBuf {
-    PathBuf::from("project/build.properties")
-}
+macro_rules! echoerr(($($arg:tt)*) => (writeln!(&mut ::std::io::stderr(), $($arg)*).unwrap();));
 
 fn build_props_sbt() -> String {
-    if let Ok(f) = std::fs::File::open(build_props()) {
-        let f = std::io::BufReader::new(f);
-
-        use std::io::BufRead;
+    if let Ok(f) = File::open(build_props()) {
+        let f = BufReader::new(f);
         for line in f.lines() {
             let line = line.unwrap();
             if line.starts_with("sbt.version") {
@@ -47,40 +39,24 @@ fn jar_file(version: &str) -> PathBuf {
     p
 }
 
-// TODO: Rename to sbt_launch_*, change line length to 112
-const sbt_ivy_release_repo: &'static str = "http://repo.typesafe.com/typesafe/ivy-releases";
-#[allow(dead_code)]
-const sbt_ivy_snapshot_repo: &'static str = "https://repo.scala-sbt.org/scalasbt/ivy-snapshots";
-const sbt_mvn_release_repo: &'static str = "http://repo.scala-sbt.org/scalasbt/maven-releases";
-#[allow(dead_code)]
-const sbt_mvn_snapshot_repo: &'static str = "http://repo.scala-sbt.org/scalasbt/maven-snapshots";
-
-// TODO: Make rustfmt align =>
-fn url_base(version: &str) -> &'static str {
-    match version {
-        s if s.starts_with("0.7.") => "http://simple-build-tool.googlecode.com",
-        s if s.starts_with("0.10.") => sbt_ivy_release_repo,
-        "0.11.1" | "0.11.2" => sbt_ivy_release_repo,
-        // "0.*-yyyymmdd-hhMMss" => sbt_ivy_snapshot_repo
-        s if s.starts_with("0.") => sbt_ivy_release_repo,
-        // "*-yyyymmdd-hhMMss" => sbt_mvn_snapshot_repo
-        _ => sbt_mvn_release_repo,
-    }
-}
+fn url_base(version: &str) -> &'static str { match version {
+    s if s.starts_with("0.7.")  => "http://simple-build-tool.googlecode.com",
+    s if s.starts_with("0.10.") => sbt_launch_ivy_release_repo,
+    "0.11.1" | "0.11.2"         => sbt_launch_ivy_release_repo,
+ // "0.*-yyyymmdd-hhMMss"       => sbt_launch_ivy_snapshot_repo, // https://repo.scala-sbt.org/scalasbt/ivy-snapshots
+    s if s.starts_with("0.")    => sbt_launch_ivy_release_repo,
+ // "*-yyyymmdd-hhMMss"         => sbt_launch_mvn_snapshot_repo, // http://repo.scala-sbt.org/scalasbt/maven-snapshots
+    _                           => sbt_launch_mvn_release_repo,
+} }
 
 fn make_url(version: &str) -> String {
     let base = url_base(version);
-
-    let url1 = format!("{}/org.scala-tools.sbt/sbt-launch/{}/sbt-launch.jar", base, version);
-    let url2 = format!("{}/org.scala-sbt/sbt-launch/{}/sbt-launch.jar", base, version);
-    let url3 = format!("{}/org/scala-sbt/sbt-launch/{}/sbt-launch.jar", base, version);
-
     match version {
-        s if s.starts_with("0.7.") => format!("{}/files/sbt-launch-0.7.7.jar", base),
-        s if s.starts_with("0.10.") => url1,
-        "0.11.1" | "0.11.2" => url1,
-        s if s.starts_with("0.") => url2,
-        _ => url3,
+        s if s.starts_with("0.7.")  => format!("{}/files/sbt-launch-0.7.7.jar", base),
+        s if s.starts_with("0.10.") => format!("{}/org.scala-tools.sbt/sbt-launch/{}/sbt-launch.jar", base, version),
+        "0.11.1" | "0.11.2"         => format!("{}/org.scala-tools.sbt/sbt-launch/{}/sbt-launch.jar", base, version),
+        s if s.starts_with("0.")    => format!("{}/org.scala-sbt/sbt-launch/{}/sbt-launch.jar", base, version),
+        _                           => format!("{}/org/scala-sbt/sbt-launch/{}/sbt-launch.jar", base, version),
     }
 }
 
@@ -88,25 +64,19 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) {
     echoerr!("Downloading sbt launcher for {}:", sbt_version);
     echoerr!("  From  {}", url);
     echoerr!("    To  {}", jar.display());
+
     std::fs::create_dir_all(jar.parent().unwrap()).unwrap();
+
     extern crate hyper;
-    let mut c = hyper::client::Client::new();
-    c.set_redirect_policy(hyper::client::RedirectPolicy::FollowAll);
-    let rb = c.get(url);
-    let rsp = rb.send().unwrap();
-    let mut reader = std::io::BufReader::new(rsp);
-    let f = std::fs::File::create(jar).unwrap();
-    let mut writer = std::io::BufWriter::new(&f);
+    let mut r = BufReader::new(hyper::client::Client::new().get(url).send().unwrap());
     let mut buf = [0; 16384];
-    use std::io::Read;
+    let mut jar = std::io::BufWriter::new(File::create(jar).unwrap());
     while {
-        let bc = reader.read(&mut buf).unwrap();
-        if bc > 0 {
-            writer.write(&buf[0..bc]).unwrap();
-        };
+        let bc = r.read(&mut buf).unwrap();
+        jar.write(&buf[0..bc]).unwrap();
         bc > 0
     } {}
-    writer.flush().unwrap();
+    jar.flush().unwrap();
 }
 
 fn exec_runner<S: AsRef<OsStr>>(args: &[S]) {
