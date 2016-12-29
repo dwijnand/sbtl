@@ -1,24 +1,29 @@
 #![allow(non_upper_case_globals)]
 //#![allow(dead_code)]
 
+#[macro_use] extern crate lazy_static;
+
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
-fn build_props() -> PathBuf { PathBuf::from("project/build.properties") }
+lazy_static! {
+    static ref HOME: PathBuf = std::env::home_dir().unwrap();
+
+    static ref build_props: PathBuf = PathBuf::from("project/build.properties");
+
+    static ref sbt_launch_dir: PathBuf = { let mut p = PathBuf::from(&*HOME); p.push(".sbt/launchers"); p };
+}
 
 const sbt_launch_ivy_release_repo: &'static str = "http://repo.typesafe.com/typesafe/ivy-releases";
 const sbt_launch_mvn_release_repo: &'static str = "http://repo.scala-sbt.org/scalasbt/maven-releases";
 
-fn home()           -> PathBuf { std::env::home_dir().unwrap() }
-fn sbt_launch_dir() -> PathBuf { let mut p = PathBuf::from(home()); p.push(".sbt/launchers"); p }
-
 macro_rules! echoerr(($($arg:tt)*) => (writeln!(&mut ::std::io::stderr(), $($arg)*).unwrap();));
 
 fn build_props_sbt() -> String {
-    if let Ok(f) = File::open(build_props()) {
+    if let Ok(f) = File::open(&*build_props) {
         let f = BufReader::new(f);
         for line in f.lines() {
             let line = line.unwrap();
@@ -33,7 +38,7 @@ fn build_props_sbt() -> String {
 }
 
 fn jar_file(version: &str) -> PathBuf {
-    let mut p = PathBuf::from(sbt_launch_dir());
+    let mut p = PathBuf::from(&*sbt_launch_dir);
     p.push(version);
     p.push("sbt-launch.jar");
     p
@@ -94,7 +99,7 @@ fn main() {
     let sbt_jar = {
         let mut sbt_jar = jar_file(&sbt_version);
         if !sbt_jar.exists() {
-            sbt_jar = PathBuf::from(home());
+            sbt_jar = PathBuf::from(&*HOME);
             sbt_jar.push(format!(".ivy2/local/org.scala-sbt/sbt-launch/{}/jars/sbt-launch.jar", sbt_version));
         }
         if !sbt_jar.exists() {
