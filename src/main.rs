@@ -96,18 +96,16 @@ fn exec_runner<S: AsRef<OsStr>>(args: &[S]) {
 
 fn main() {
     let sbt_version = build_props_sbt();
-    let sbt_jar = {
-        let mut sbt_jar = jar_file(&sbt_version);
-        if !sbt_jar.exists() {
-            sbt_jar = PathBuf::from(&*HOME);
-            sbt_jar.push(format!(".ivy2/local/org.scala-sbt/sbt-launch/{}/jars/sbt-launch.jar", sbt_version));
-        }
-        if !sbt_jar.exists() {
-            sbt_jar = jar_file(&sbt_version);
-            download_url(&sbt_version, &make_url(&sbt_version), &sbt_jar);
-        }
-        sbt_jar
-    };
+    let mut sbt_jar = jar_file(&sbt_version);
+    if !sbt_jar.exists() {
+        sbt_jar = PathBuf::from(&*HOME);
+        sbt_jar.push(format!(".ivy2/local/org.scala-sbt/sbt-launch/{}/jars/sbt-launch.jar", sbt_version));
+    }
+    if !sbt_jar.exists() {
+        sbt_jar = jar_file(&sbt_version);
+        download_url(&sbt_version, &make_url(&sbt_version), &sbt_jar);
+    }
+    let sbt_jar = sbt_jar.as_path();
 
     let java_cmd = "java";
     let extra_jvm_opts = ["-Xms512m", "-Xmx1536m", "-Xss2m"];
@@ -115,16 +113,14 @@ fn main() {
     let sbt_commands: [&str; 0] = [];
     let residual_args = ["shell"];
 
-    let exec_args: Vec<&OsStr> = {
-        let mut exec_args = Vec::new();
-        exec_args.push(java_cmd.as_ref());
-        exec_args.extend_from_slice(&extra_jvm_opts.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
-        exec_args.extend_from_slice(&java_args.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
-        exec_args.extend_from_slice(&["-jar".as_ref(), sbt_jar.as_ref()]);
-        exec_args.extend_from_slice(&sbt_commands.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
-        exec_args.extend_from_slice(&residual_args.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
-        exec_args
-    };
+    let mut exec_args: Vec<&OsStr> = Vec::new();
+    exec_args.push(java_cmd.as_ref());
+    exec_args.extend_from_slice(&extra_jvm_opts.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
+    exec_args.extend_from_slice(&java_args.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
+    exec_args.extend_from_slice(&["-jar".as_ref(), sbt_jar.as_ref()]);
+    exec_args.extend_from_slice(&sbt_commands.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
+    exec_args.extend_from_slice(&residual_args.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
+    let exec_args = &exec_args;
 
-    exec_runner(&exec_args)
+    exec_runner(exec_args)
 }
