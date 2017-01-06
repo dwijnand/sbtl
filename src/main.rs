@@ -7,7 +7,7 @@ use std::ffi::OsStr;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
-use std::path::{Path, PathBuf};
+use std::path::{ Path, PathBuf };
 
 lazy_static! {
     static ref HOME: PathBuf = std::env::home_dir().unwrap();
