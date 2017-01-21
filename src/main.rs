@@ -97,55 +97,76 @@ fn exec_runner<S: AsRef<OsStr>>(args: &[S]) {
     std::process::exit(-1)
 }
 
-fn main() {
-    let script_name = std::env::args().nth(0).unwrap();
-    let script_name = Path::new(&script_name).file_name().unwrap().to_str().unwrap();
+struct App<'a> {
+           verbose: bool,
+          java_cmd: &'a OsStr,
+    extra_jvm_opts: Vec<&'a OsStr>,
+         java_args: Vec<&'a OsStr>,
+      sbt_commands: Vec<&'a OsStr>,
+     residual_args: Vec<&'a OsStr>,
+}
 
-    let mut verbose = false;
-
-    fn vlog(s: &str) { /* if verbose { echoerr!("{}", s); } */ }
-
-    let java_cmd = "java";
-    let extra_jvm_opts = ["-Xms512m", "-Xmx1536m", "-Xss2m"];
-    let java_args: [&str; 0] = [];
-    let sbt_commands: [&str; 0] = [];
-    let mut residual_args: Vec<&OsStr> = Vec::new();
-
-    // addResidual() { vlog "[residual] arg = '$1'"  ; residual_args+=("$1"); }
-    fn add_residual(s: &str) { vlog(&format!("[residual] arg = {}", s)); /* residual_args.push(s); */ }
-
-    for arg in std::env::args() {
-        match arg.as_ref() {
-            "-v" => verbose = true,
-            s    => add_residual(s),
+impl<'a> App<'a> {
+    fn new() -> App<'a> {
+        App {
+                 verbose: Default::default(),
+                java_cmd: "java".as_ref(),
+          extra_jvm_opts: vec!["-Xms512m".as_ref(), "-Xmx1536m".as_ref(), "-Xss2m".as_ref()],
+               java_args: Default::default(),
+            sbt_commands: Default::default(),
+           residual_args: Default::default(),
         }
     }
 
-    let argument_count = std::env::args().len();
-    if argument_count > 0 {
-        vlog(&format!("Starting {}: invoke with -help for other options", script_name));
-        residual_args = vec!["shell".as_ref()];
+    fn vlog(&self, s: &str) { if self.verbose { echoerr!("{}", s); } }
+
+    fn add_residual(&mut self, s: &'a str) {
+        self.vlog(&format!("[residual] arg = {}", s));
+        self.residual_args.push(s.as_ref());
     }
 
-    let sbt_version = build_props_sbt();
-    let mut sbt_jar = jar_file(&sbt_version);
-    if !sbt_jar.exists() {
-        sbt_jar = PathBuf::from(&*HOME);
-        sbt_jar.push(format!(".ivy2/local/org.scala-sbt/sbt-launch/{}/jars/sbt-launch.jar", sbt_version));
-    }
-    if !sbt_jar.exists() {
-        sbt_jar = jar_file(&sbt_version);
-        download_url(&sbt_version, &make_url(&sbt_version), &sbt_jar);
-    }
-    let sbt_jar = sbt_jar.as_path();
+    fn run(&mut self) {
+        let script_name = std::env::args().nth(0).unwrap();
+        let script_name = Path::new(&script_name).file_name().unwrap().to_str().unwrap();
 
-    let mut exec_args: Vec<&OsStr> = Vec::new();
-    exec_args.push(java_cmd.as_ref());
-    exec_args.append(&mut extra_jvm_opts.iter().map(AsRef::as_ref).collect());
-    exec_args.append(&mut java_args.iter().map(AsRef::as_ref).collect());
-    exec_args.append(&mut vec!["-jar".as_ref(), sbt_jar.as_ref()]);
-    exec_args.append(&mut sbt_commands.iter().map(AsRef::as_ref).collect());
-    exec_args.append(&mut residual_args.iter().map(AsRef::as_ref).collect());
+        for arg in std::env::args().skip(1) {
+            match arg.as_ref() {
+                "-v" => self.verbose = true,
+                s    => panic!("fu"),
+                // s    => self.add_residual(&s),
+            }
+        }
 
-    exec_runner(&exec_args)
+        let argument_count = std::env::args().len();
+        if argument_count > 0 {
+            self.vlog(&format!("Starting {}: invoke with -help for other options", script_name));
+            self.residual_args = vec!["shell".as_ref()];
+        }
+
+        let sbt_version = build_props_sbt();
+        let mut sbt_jar = jar_file(&sbt_version);
+        if !sbt_jar.exists() {
+            sbt_jar = PathBuf::from(&*HOME);
+            sbt_jar.push(format!(".ivy2/local/org.scala-sbt/sbt-launch/{}/jars/sbt-launch.jar", sbt_version));
+        }
+        if !sbt_jar.exists() {
+            sbt_jar = jar_file(&sbt_version);
+            download_url(&sbt_version, &make_url(&sbt_version), &sbt_jar);
+        }
+        let sbt_jar = sbt_jar.as_path();
+
+        let mut exec_args: Vec<&OsStr> = Vec::new();
+        exec_args.push(self.java_cmd.as_ref());
+        exec_args.append(&mut self.extra_jvm_opts.iter().map(AsRef::as_ref).collect());
+        exec_args.append(&mut self.java_args.iter().map(AsRef::as_ref).collect());
+        exec_args.append(&mut vec!["-jar".as_ref(), sbt_jar.as_ref()]);
+        exec_args.append(&mut self.sbt_commands.iter().map(AsRef::as_ref).collect());
+        exec_args.append(&mut self.residual_args.iter().map(AsRef::as_ref).collect());
+
+        exec_runner(&exec_args)
+    }
+}
+
+fn main() {
+    App::new().run()
 }
