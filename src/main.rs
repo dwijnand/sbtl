@@ -98,9 +98,8 @@ fn exec_runner<S: AsRef<OsStr>>(args: &[S]) {
 }
 
 fn main() {
-    // declare -r script_path="$(get_script_path "$BASH_SOURCE")"
-    // declare -r script_name="${script_path##*/}"
-    let script_name = "sbtl";
+    let script_name = std::env::args().nth(0).unwrap();
+    let script_name = Path::new(&script_name).file_name().unwrap().to_str().unwrap();
 
     let mut verbose = false;
 
