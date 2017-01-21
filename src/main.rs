@@ -1,5 +1,8 @@
 #![allow(non_upper_case_globals)]
-//#![allow(dead_code)]
+
+#![allow(dead_code)]
+#![allow(unused_assignments)]
+#![allow(unused_variables)]
 
 #[macro_use] extern crate lazy_static;
 
@@ -95,6 +98,36 @@ fn exec_runner<S: AsRef<OsStr>>(args: &[S]) {
 }
 
 fn main() {
+    // declare -r script_path="$(get_script_path "$BASH_SOURCE")"
+    // declare -r script_name="${script_path##*/}"
+    let script_name = "sbtl";
+
+    let mut verbose = false;
+
+    fn vlog(s: &str) { /* if verbose { echoerr!("{}", s); } */ }
+
+    let java_cmd = "java";
+    let extra_jvm_opts = ["-Xms512m", "-Xmx1536m", "-Xss2m"];
+    let java_args: [&str; 0] = [];
+    let sbt_commands: [&str; 0] = [];
+    let mut residual_args: Vec<&OsStr> = Vec::new();
+
+    // addResidual() { vlog "[residual] arg = '$1'"  ; residual_args+=("$1"); }
+    fn add_residual(s: &str) { vlog(&format!("[residual] arg = {}", s)); /* residual_args.push(s); */ }
+
+    for arg in std::env::args() {
+        match arg.as_ref() {
+            "-v" => verbose = true,
+            s    => add_residual(s),
+        }
+    }
+
+    let argument_count = std::env::args().len();
+    if argument_count > 0 {
+        vlog(&format!("Starting {}: invoke with -help for other options", script_name));
+        residual_args = vec!["shell".as_ref()];
+    }
+
     let sbt_version = build_props_sbt();
     let mut sbt_jar = jar_file(&sbt_version);
     if !sbt_jar.exists() {
@@ -107,20 +140,13 @@ fn main() {
     }
     let sbt_jar = sbt_jar.as_path();
 
-    let java_cmd = "java";
-    let extra_jvm_opts = ["-Xms512m", "-Xmx1536m", "-Xss2m"];
-    let java_args: [&str; 0] = [];
-    let sbt_commands: [&str; 0] = [];
-    let residual_args = ["shell"];
-
     let mut exec_args: Vec<&OsStr> = Vec::new();
     exec_args.push(java_cmd.as_ref());
-    exec_args.extend_from_slice(&extra_jvm_opts.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
-    exec_args.extend_from_slice(&java_args.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
-    exec_args.extend_from_slice(&["-jar".as_ref(), sbt_jar.as_ref()]);
-    exec_args.extend_from_slice(&sbt_commands.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
-    exec_args.extend_from_slice(&residual_args.iter().map(|x| x.as_ref()).collect::<Vec<_>>());
-    let exec_args = &exec_args;
+    exec_args.append(&mut extra_jvm_opts.iter().map(AsRef::as_ref).collect());
+    exec_args.append(&mut java_args.iter().map(AsRef::as_ref).collect());
+    exec_args.append(&mut vec!["-jar".as_ref(), sbt_jar.as_ref()]);
+    exec_args.append(&mut sbt_commands.iter().map(AsRef::as_ref).collect());
+    exec_args.append(&mut residual_args.iter().map(AsRef::as_ref).collect());
 
-    exec_runner(exec_args)
+    exec_runner(&exec_args)
 }
