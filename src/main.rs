@@ -18,6 +18,13 @@ lazy_static! {
     static ref build_props: PathBuf = PathBuf::from("project/build.properties");
 
     static ref sbt_launch_dir: PathBuf = { let mut p = PathBuf::from(&*HOME); p.push(".sbt/launchers"); p };
+
+    static ref script_name: String = {
+        let n = std::env::args().nth(0).unwrap();
+        let n = Path::new(&n).file_name().unwrap().to_str().unwrap();
+        n.to_string()
+    };
+
 }
 
 const sbt_launch_ivy_release_repo: &'static str = "http://repo.typesafe.com/typesafe/ivy-releases";
@@ -126,20 +133,16 @@ impl<'a> App<'a> {
     }
 
     fn run(&mut self) {
-        let script_name = std::env::args().nth(0).unwrap();
-        let script_name = Path::new(&script_name).file_name().unwrap().to_str().unwrap();
-
         for arg in std::env::args().skip(1) {
             match arg.as_ref() {
                 "-v" => self.verbose = true,
-                s    => panic!("fu"),
-                // s    => self.add_residual(&s),
+                s    => panic!("fu"), // self.add_residual(&s),
             }
         }
 
         let argument_count = std::env::args().len();
         if argument_count > 0 {
-            self.vlog(&format!("Starting {}: invoke with -help for other options", script_name));
+            self.vlog(&format!("Starting {}: invoke with -help for other options", *script_name));
             self.residual_args = vec!["shell".as_ref()];
         }
 
