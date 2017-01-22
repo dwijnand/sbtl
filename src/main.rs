@@ -132,16 +132,18 @@ impl<'a> App<'a> {
         self.residual_args.push(s.as_ref());
     }
 
-    fn run(&mut self) {
+    fn process_args(&mut self) {
         for arg in std::env::args().skip(1) {
             match arg.as_ref() {
                 "-v" => self.verbose = true,
                 s    => panic!("fu"), // self.add_residual(&s),
             }
         }
+    }
 
-        let argument_count = std::env::args().len();
-        if argument_count > 0 {
+    fn run(&mut self) {
+        let argument_count = self.residual_args.len();
+        if argument_count == 0 {
             self.vlog(&format!("Starting {}: invoke with -help for other options", *script_name));
             self.residual_args = vec!["shell".as_ref()];
         }
@@ -171,5 +173,7 @@ impl<'a> App<'a> {
 }
 
 fn main() {
-    App::new().run()
+    let mut app = App::new();
+    app.process_args();
+    app.run()
 }
