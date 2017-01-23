@@ -158,6 +158,10 @@ impl<'a> App<'a> {
             sbt_jar = jar_file(&sbt_version);
             download_url(&sbt_version, &make_url(&sbt_version), &sbt_jar);
         }
+        if !sbt_jar.exists() {
+            println!("Download failed. Obtain the jar manually and place it at {}", sbt_jar.display());
+            std::process::exit(1);
+        }
         let sbt_jar = sbt_jar.as_path();
 
         let mut exec_args: Vec<&OsStr> = Vec::new();
