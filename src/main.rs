@@ -75,7 +75,7 @@ fn make_url(version: &str) -> String {
     }
 }
 
-fn download_url(sbt_version: &str, url: &str, jar: &Path) {
+fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
     echoerr!("Downloading sbt launcher for {}:", sbt_version);
     echoerr!("  From  {}", url);
     echoerr!("    To  {}", jar.display());
@@ -85,13 +85,14 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) {
     extern crate hyper;
     let mut r = BufReader::new(hyper::client::Client::new().get(url).send().unwrap());
     let mut buf = [0; 16384];
-    let mut jar = std::io::BufWriter::new(File::create(jar).unwrap());
+    let mut jar2 = std::io::BufWriter::new(File::create(jar).unwrap());
     while {
         let bc = r.read(&mut buf).unwrap();
-        jar.write(&buf[0..bc]).unwrap();
+        jar2.write(&buf[0..bc]).unwrap();
         bc > 0
     } {}
-    jar.flush().unwrap();
+    jar2.flush().unwrap();
+    File::open(jar).is_ok()
 }
 
 fn exec_runner<S: AsRef<OsStr>>(args: &[S]) {
@@ -105,6 +106,8 @@ fn exec_runner<S: AsRef<OsStr>>(args: &[S]) {
 }
 
 struct App<'a> {
+           sbt_jar: PathBuf,
+       sbt_version: String,
            verbose: bool,
           java_cmd: &'a OsStr,
     extra_jvm_opts: Vec<&'a OsStr>,
@@ -116,6 +119,8 @@ struct App<'a> {
 impl<'a> App<'a> {
     fn new() -> App<'a> {
         App {
+                 sbt_jar: PathBuf::new(),
+             sbt_version: Default::default(),
                  verbose: Default::default(),
                 java_cmd: "java".as_ref(),
           extra_jvm_opts: vec!["-Xms512m".as_ref(), "-Xmx1536m".as_ref(), "-Xss2m".as_ref()],
@@ -126,6 +131,12 @@ impl<'a> App<'a> {
     }
 
     fn vlog(&self, s: &str) { if self.verbose { echoerr!("{}", s); } }
+
+    fn set_sbt_version(&mut self) {
+        self.sbt_version=build_props_sbt();
+        // sbt_version="${sbt_explicit_version:-$(build_props_sbt)}"
+        // [[ -n "$sbt_version" ]] || sbt_version=$sbt_release_version
+    }
 
     fn add_residual(&mut self, s: &'a str) {
         self.vlog(&format!("[residual] arg = {}", s));
@@ -141,34 +152,42 @@ impl<'a> App<'a> {
         }
     }
 
+    fn acquire_sbt_jar(&mut self) -> bool {
+        ({
+            self.sbt_jar = jar_file(&self.sbt_version);
+            File::open(self.sbt_jar.as_path()).is_ok()
+        }) || ({
+            self.sbt_jar = PathBuf::from(&*HOME);
+            self.sbt_jar.push(format!(".ivy2/local/org.scala-sbt/sbt-launch/{}/jars/sbt-launch.jar", self.sbt_version));
+            File::open(self.sbt_jar.as_path()).is_ok()
+        }) || ({
+            self.sbt_jar = jar_file(&self.sbt_version);
+            download_url(&self.sbt_version, &make_url(&self.sbt_version), &self.sbt_jar)
+        })
+    }
+
     fn run(&mut self) {
         let argument_count = self.residual_args.len();
+
+        self.set_sbt_version();
+
         if argument_count == 0 {
             self.vlog(&format!("Starting {}: invoke with -help for other options", *script_name));
             self.residual_args = vec!["shell".as_ref()];
         }
 
-        let sbt_version = build_props_sbt();
-        let mut sbt_jar = jar_file(&sbt_version);
-        if !sbt_jar.exists() {
-            sbt_jar = PathBuf::from(&*HOME);
-            sbt_jar.push(format!(".ivy2/local/org.scala-sbt/sbt-launch/{}/jars/sbt-launch.jar", sbt_version));
-        }
-        if !sbt_jar.exists() {
-            sbt_jar = jar_file(&sbt_version);
-            download_url(&sbt_version, &make_url(&sbt_version), &sbt_jar);
-        }
-        if !sbt_jar.exists() {
-            println!("Download failed. Obtain the jar manually and place it at {}", sbt_jar.display());
+        // no jar? download it.
+        File::open(self.sbt_jar.as_path()).is_ok() || self.acquire_sbt_jar() || {
+            // still no jar? uh-oh.
+            println!("Download failed. Obtain the jar manually and place it at {}", self.sbt_jar.display());
             std::process::exit(1);
-        }
-        let sbt_jar = sbt_jar.as_path();
+        };
 
         let mut exec_args: Vec<&OsStr> = Vec::new();
         exec_args.push(self.java_cmd.as_ref());
         exec_args.append(&mut self.extra_jvm_opts.iter().map(AsRef::as_ref).collect());
         exec_args.append(&mut self.java_args.iter().map(AsRef::as_ref).collect());
-        exec_args.append(&mut vec!["-jar".as_ref(), sbt_jar.as_ref()]);
+        exec_args.append(&mut vec!["-jar".as_ref(), self.sbt_jar.as_ref()]);
         exec_args.append(&mut self.sbt_commands.iter().map(AsRef::as_ref).collect());
         exec_args.append(&mut self.residual_args.iter().map(AsRef::as_ref).collect());
 
