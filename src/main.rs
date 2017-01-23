@@ -95,16 +95,6 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
     File::open(jar).is_ok()
 }
 
-fn exec_runner<S: AsRef<OsStr>>(args: &[S]) {
-    use std::os::unix::process::CommandExt;
-    let err = std::process::Command::new(&args[0]).args(&args[1..]).exec();
-    println!("error: {}", err);
-    if let Some(err) = err.raw_os_error() {
-        std::process::exit(err);
-    }
-    std::process::exit(-1)
-}
-
 struct App<'a> {
            sbt_jar: PathBuf,
        sbt_version: String,
@@ -130,7 +120,7 @@ impl<'a> App<'a> {
         }
     }
 
-    fn vlog(&self, s: &str) { if self.verbose { echoerr!("{}", s); } }
+    fn vlog(&self, s: &str) -> bool { if self.verbose { echoerr!("{}", s); true } else { false } }
 
     fn set_sbt_version(&mut self) {
         self.sbt_version=build_props_sbt();
@@ -166,6 +156,31 @@ impl<'a> App<'a> {
         })
     }
 
+    fn exec_runner<S: AsRef<OsStr>>(&self, args: &[S]) {
+        self.vlog("# Executing command line:") && {
+            for arg in args {
+                let arg = arg.as_ref();
+                if !arg.is_empty() {
+                    let arg = arg.to_string_lossy();
+                    if arg.contains(" ") {
+                        echoerr!("\"{}\"", arg);
+                    } else {
+                        echoerr!("{}", arg);
+                    }
+                }
+            }
+            self.vlog("")
+        };
+
+        use std::os::unix::process::CommandExt;
+        let err = std::process::Command::new(&args[0]).args(&args[1..]).exec();
+        println!("error: {}", err);
+        if let Some(err) = err.raw_os_error() {
+            std::process::exit(err);
+        }
+        std::process::exit(-1)
+    }
+
     fn run(&mut self) {
         let argument_count = self.residual_args.len();
 
@@ -191,7 +206,7 @@ impl<'a> App<'a> {
         exec_args.append(&mut self.sbt_commands.iter().map(AsRef::as_ref).collect());
         exec_args.append(&mut self.residual_args.iter().map(AsRef::as_ref).collect());
 
-        exec_runner(&exec_args)
+        self.exec_runner(&exec_args)
     }
 }
 
