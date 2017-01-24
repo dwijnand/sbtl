@@ -159,7 +159,7 @@ impl App {
             match arg {
                 "-v"         => self.verbose = true,
                 "-jvm-debug" => { let next = next(); require_arg("port", arg, &next); self.add_debugger(next.parse().unwrap()) },
-                s            => panic!("fu"), // self.add_residual(&s),
+                s            => self.add_residual(s),
             }
         }
     }
