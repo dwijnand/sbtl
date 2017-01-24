@@ -184,6 +184,22 @@ impl App {
         })
     }
 
+    fn usage(&mut self) {
+        self.set_sbt_version();
+        print!("\
+Usage: {} [options]
+
+Note that options which are passed along to sbt begin with -- whereas
+options to this runner use a single dash. Any sbt command can be scheduled
+to run first by prefixing the command with --, so --warn, --error and so on
+are not special.
+
+  -h | -help         print this message
+  -v                 verbose operation (this runner is chattier)
+  -jvm-debug <port>  Turn on JVM debugging, open at the given port.
+", *script_name);
+    }
+
     fn process_args(&mut self) {
         fn require_arg(tpe: &str, opt: &str, arg: &str) {
             if arg.is_empty() || &arg[0..1] == "-" {
@@ -196,9 +212,10 @@ impl App {
             let mut next = || -> String { args.next().unwrap_or("".into()) };
             let arg = arg.as_ref();
             match arg {
-                "-v"         => self.verbose = true,
-                "-jvm-debug" => { let next = next(); require_arg("port", arg, &next); self.add_debugger(next.parse().unwrap()) },
-                s            => self.add_residual(s),
+                "-h" | "-help" => { self.usage(); std::process::exit(1) },
+                "-v"           => self.verbose = true,
+                "-jvm-debug"   => { let next = next(); require_arg("port", arg, &next); self.add_debugger(next.parse().unwrap()) },
+                s              => self.add_residual(s),
             }
         }
     }
