@@ -95,25 +95,25 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
     File::open(jar).is_ok()
 }
 
-struct App<'a> {
+struct App {
            sbt_jar: PathBuf,
        sbt_version: String,
            verbose: bool,
-          java_cmd: &'a OsStr,
-    extra_jvm_opts: Vec<&'a OsStr>,
-         java_args: Vec<&'a OsStr>,
-      sbt_commands: Vec<&'a OsStr>,
-     residual_args: Vec<&'a OsStr>,
+          java_cmd: String,
+    extra_jvm_opts: Vec<String>,
+         java_args: Vec<String>,
+      sbt_commands: Vec<String>,
+     residual_args: Vec<String>,
 }
 
-impl<'a> App<'a> {
-    fn new() -> App<'a> {
+impl App {
+    fn new() -> App {
         App {
                  sbt_jar: PathBuf::new(),
              sbt_version: Default::default(),
                  verbose: Default::default(),
-                java_cmd: "java".as_ref(),
-          extra_jvm_opts: vec!["-Xms512m".as_ref(), "-Xmx1536m".as_ref(), "-Xss2m".as_ref()],
+                java_cmd: "java".into(),
+          extra_jvm_opts: vec!["-Xms512m".into(), "-Xmx1536m".into(), "-Xss2m".into()],
                java_args: Default::default(),
             sbt_commands: Default::default(),
            residual_args: Default::default(),
@@ -128,9 +128,9 @@ impl<'a> App<'a> {
         // [[ -n "$sbt_version" ]] || sbt_version=$sbt_release_version
     }
 
-    fn add_residual(&mut self, s: &'a str) {
+    fn add_residual(&mut self, s: &str) {
         self.vlog(&format!("[residual] arg = {}", s));
-        self.residual_args.push(s.as_ref());
+        self.residual_args.push(s.into());
     }
 
     fn process_args(&mut self) {
@@ -188,7 +188,7 @@ impl<'a> App<'a> {
 
         if argument_count == 0 {
             self.vlog(&format!("Starting {}: invoke with -help for other options", *script_name));
-            self.residual_args = vec!["shell".as_ref()];
+            self.residual_args = vec!["shell".into()];
         }
 
         // no jar? download it.
