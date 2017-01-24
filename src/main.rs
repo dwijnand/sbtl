@@ -49,13 +49,6 @@ fn build_props_sbt() -> String {
     "".to_owned()
 }
 
-fn jar_file(version: &str) -> PathBuf {
-    let mut p = PathBuf::from(&*sbt_launch_dir);
-    p.push(version);
-    p.push("sbt-launch.jar");
-    p
-}
-
 fn url_base(version: &str) -> &'static str { match version {
     s if s.starts_with("0.7.")  => "http://simple-build-tool.googlecode.com",
     s if s.starts_with("0.10.") => sbt_launch_ivy_release_repo,
@@ -75,6 +68,13 @@ fn make_url(version: &str) -> String {
         s if s.starts_with("0.")    => format!("{}/org.scala-sbt/sbt-launch/{}/sbt-launch.jar", base, version),
         _                           => format!("{}/org/scala-sbt/sbt-launch/{}/sbt-launch.jar", base, version),
     }
+}
+
+fn jar_file(version: &str) -> PathBuf {
+    let mut p = PathBuf::from(&*sbt_launch_dir);
+    p.push(version);
+    p.push("sbt-launch.jar");
+    p
 }
 
 fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
@@ -145,39 +145,6 @@ impl App {
         self.add_java(&format!("-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address={}", port));
     }
 
-    fn process_args(&mut self) {
-        fn require_arg(tpe: &str, opt: &str, arg: &str) {
-            if arg.is_empty() || &arg[0..1] == "-" {
-                die(&format!("{} requires <{}> argument", opt, tpe));
-            }
-        }
-        let args = std::env::args();
-        let mut args = args.skip(1); // skip the path of the executable
-        while let Some(arg) = args.next() {
-            let mut next = || -> String { args.next().unwrap_or("".into()) };
-            let arg = arg.as_ref();
-            match arg {
-                "-v"         => self.verbose = true,
-                "-jvm-debug" => { let next = next(); require_arg("port", arg, &next); self.add_debugger(next.parse().unwrap()) },
-                s            => self.add_residual(s),
-            }
-        }
-    }
-
-    fn acquire_sbt_jar(&mut self) -> bool {
-        ({
-            self.sbt_jar = jar_file(&self.sbt_version);
-            File::open(self.sbt_jar.as_path()).is_ok()
-        }) || ({
-            self.sbt_jar = PathBuf::from(&*HOME);
-            self.sbt_jar.push(format!(".ivy2/local/org.scala-sbt/sbt-launch/{}/jars/sbt-launch.jar", self.sbt_version));
-            File::open(self.sbt_jar.as_path()).is_ok()
-        }) || ({
-            self.sbt_jar = jar_file(&self.sbt_version);
-            download_url(&self.sbt_version, &make_url(&self.sbt_version), &self.sbt_jar)
-        })
-    }
-
     fn exec_runner<S: AsRef<OsStr>>(&self, args: &[S]) {
         self.vlog("# Executing command line:") && {
             for arg in args {
@@ -201,6 +168,39 @@ impl App {
             std::process::exit(err);
         }
         std::process::exit(-1)
+    }
+
+    fn acquire_sbt_jar(&mut self) -> bool {
+        ({
+            self.sbt_jar = jar_file(&self.sbt_version);
+            File::open(self.sbt_jar.as_path()).is_ok()
+        }) || ({
+            self.sbt_jar = PathBuf::from(&*HOME);
+            self.sbt_jar.push(format!(".ivy2/local/org.scala-sbt/sbt-launch/{}/jars/sbt-launch.jar", self.sbt_version));
+            File::open(self.sbt_jar.as_path()).is_ok()
+        }) || ({
+            self.sbt_jar = jar_file(&self.sbt_version);
+            download_url(&self.sbt_version, &make_url(&self.sbt_version), &self.sbt_jar)
+        })
+    }
+
+    fn process_args(&mut self) {
+        fn require_arg(tpe: &str, opt: &str, arg: &str) {
+            if arg.is_empty() || &arg[0..1] == "-" {
+                die(&format!("{} requires <{}> argument", opt, tpe));
+            }
+        }
+        let args = std::env::args();
+        let mut args = args.skip(1); // skip the path of the executable
+        while let Some(arg) = args.next() {
+            let mut next = || -> String { args.next().unwrap_or("".into()) };
+            let arg = arg.as_ref();
+            match arg {
+                "-v"         => self.verbose = true,
+                "-jvm-debug" => { let next = next(); require_arg("port", arg, &next); self.add_debugger(next.parse().unwrap()) },
+                s            => self.add_residual(s),
+            }
+        }
     }
 
     fn run(&mut self) {
