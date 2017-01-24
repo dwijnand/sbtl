@@ -32,6 +32,8 @@ const sbt_launch_mvn_release_repo: &'static str = "http://repo.scala-sbt.org/sca
 
 macro_rules! echoerr(($($arg:tt)*) => (writeln!(&mut ::std::io::stderr(), $($arg)*).unwrap();));
 
+fn die(s: &str) { println!("Aborting: {}", s); std::process::exit(1) }
+
 fn build_props_sbt() -> String {
     if let Ok(f) = File::open(&*build_props) {
         let f = BufReader::new(f);
@@ -128,16 +130,36 @@ impl App {
         // [[ -n "$sbt_version" ]] || sbt_version=$sbt_release_version
     }
 
+    fn add_java(&mut self, s: &str) {
+        self.vlog(&format!("[add_java] arg = {}", s));
+        self.java_args.push(s.into());
+    }
+
     fn add_residual(&mut self, s: &str) {
         self.vlog(&format!("[residual] arg = {}", s));
         self.residual_args.push(s.into());
     }
 
+    fn add_debugger(&mut self, port: u16) {
+        self.add_java("-Xdebug");
+        self.add_java(&format!("-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address={}", port));
+    }
+
     fn process_args(&mut self) {
-        for arg in std::env::args().skip(1) {
-            match arg.as_ref() {
-                "-v" => self.verbose = true,
-                s    => panic!("fu"), // self.add_residual(&s),
+        fn require_arg(tpe: &str, opt: &str, arg: &str) {
+            if arg.is_empty() || &arg[0..1] == "-" {
+                die(&format!("{} requires <{}> argument", opt, tpe));
+            }
+        }
+        let args = std::env::args();
+        let mut args = args.skip(1); // skip the path of the executable
+        while let Some(arg) = args.next() {
+            let mut next = || -> String { args.next().unwrap_or("".into()) };
+            let arg = arg.as_ref();
+            match arg {
+                "-v"         => self.verbose = true,
+                "-jvm-debug" => { let next = next(); require_arg("port", arg, &next); self.add_debugger(next.parse().unwrap()) },
+                s            => panic!("fu"), // self.add_residual(&s),
             }
         }
     }
