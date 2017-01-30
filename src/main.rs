@@ -4,11 +4,15 @@
 //#![allow(unused_assignments)]
 //#![allow(unused_variables)]
 
+use std::env::*;
 use std::ffi::OsStr;
+use std::fs;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{ BufReader, BufWriter, };
 use std::io::prelude::*;
-use std::path::{ Path, PathBuf };
+use std::os::unix::process::CommandExt;
+use std::path::{ Path, PathBuf, };
+use std::process::{ Command, exit, };
 
 const sbt_release_version: &'static str = "0.13.13";
 
@@ -21,8 +25,8 @@ const default_jvm_opts_common: [&'static str; 3] = ["-Xms512m", "-Xmx1536m", "-X
 
 #[macro_use] extern crate lazy_static;
 lazy_static! {
-    static ref HOME: PathBuf = std::env::home_dir().unwrap();
-    static ref script_name: String = std::env::current_exe().unwrap().file_name().unwrap().to_string_lossy().into_owned();
+    static ref HOME: PathBuf = home_dir().unwrap();
+    static ref script_name: String = current_exe().unwrap().file_name().unwrap().to_string_lossy().into_owned();
 }
 
 macro_rules! echoerr(($($arg:tt)*) => (writeln!(&mut ::std::io::stderr(), $($arg)*).unwrap();));
@@ -75,12 +79,12 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
     echoerr!("  From  {}", url);
     echoerr!("    To  {}", jar.display());
 
-    std::fs::create_dir_all(jar.parent().unwrap()).unwrap();
+    fs::create_dir_all(jar.parent().unwrap()).unwrap();
 
     extern crate hyper;
     let mut r = BufReader::new(hyper::client::Client::new().get(url).send().unwrap());
     let mut buf = [0; 16384];
-    let mut jar2 = std::io::BufWriter::new(File::create(jar).unwrap());
+    let mut jar2 = BufWriter::new(File::create(jar).unwrap());
     while {
         let bc = r.read(&mut buf).unwrap();
         jar2.write(&buf[0..bc]).unwrap();
@@ -117,7 +121,8 @@ impl App {
         }
     }
 
-    fn vlog(&self, s: &str) -> bool { if self.verbose { echoerr!("{}", s); true } else { false } }
+    // TODO: See if this can become a macro
+    fn vlog(&self, s: &str) -> bool { if self.verbose { echoerr!("{}", s) }; self.verbose }
 
     fn set_sbt_version(&mut self) {
         self.sbt_version=build_props_sbt();
@@ -156,13 +161,12 @@ impl App {
             self.vlog("")
         };
 
-        use std::os::unix::process::CommandExt;
-        let err = std::process::Command::new(&args[0]).args(&args[1..]).exec();
+        let err = Command::new(&args[0]).args(&args[1..]).exec();
         println!("error: {}", err);
         if let Some(err) = err.raw_os_error() {
-            std::process::exit(err);
+            exit(err);
         }
-        std::process::exit(-1)
+        exit(-1)
     }
 
     fn jar_file(&self, version: &str) -> PathBuf {
@@ -217,13 +221,12 @@ are not special.
                 die!("{} requires <{}> argument", opt, tpe);
             }
         }
-        let args = std::env::args();
-        let mut args = args.skip(1); // skip the path of the executable
+        let mut args = args().skip(1); // skip the path of the executable
         while let Some(arg) = args.next() {
             let mut next = || -> String { args.next().unwrap_or("".into()) };
             let arg = arg.as_ref();
             match arg {
-                "-h" | "-help"           => { self.usage(); std::process::exit(1) },
+                "-h" | "-help"           => { self.usage(); exit(1) },
                 "-v"                     => self.verbose = true,
                 "-jvm-debug"             => { let next = next(); require_arg("port", arg, &next); self.addDebugger(next.parse().unwrap()) },
                 s if s.starts_with("-J") => self.addJava(&s[2..]),
@@ -247,15 +250,15 @@ are not special.
         if !File::open(PathBuf::from("build.sbt")).is_ok() && !PathBuf::from("project").is_dir() {
             print!("\
 {pwd} doesn't appear to be an sbt project.
-", pwd=std::env::current_dir().unwrap().display());
-            std::process::exit(1);
+", pwd=current_dir().unwrap().display());
+            exit(1);
         }
 
         // no jar? download it.
         File::open(self.sbt_jar.as_path()).is_ok() || self.acquire_sbt_jar() || {
             // still no jar? uh-oh.
             println!("Download failed. Obtain the jar manually and place it at {}", self.sbt_jar.display());
-            std::process::exit(1);
+            exit(1);
         };
 
         self.vlog("Using default jvm options");
