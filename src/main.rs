@@ -1,4 +1,5 @@
 #![allow(non_upper_case_globals)]
+#![allow(non_snake_case)]
 //#![allow(dead_code)]
 //#![allow(unused_assignments)]
 //#![allow(unused_variables)]
@@ -11,7 +12,7 @@ use std::path::{ Path, PathBuf };
 
 const sbt_release_version: &'static str = "0.13.13";
 
-const build_props: &'static str = "project/build.properties";
+const buildProps: &'static str = "project/build.properties";
 
 const sbt_launch_ivy_release_repo: &'static str = "http://repo.typesafe.com/typesafe/ivy-releases";
 const sbt_launch_mvn_release_repo: &'static str = "http://repo.scala-sbt.org/scalasbt/maven-releases";
@@ -28,7 +29,7 @@ macro_rules! echoerr(($($arg:tt)*) => (writeln!(&mut ::std::io::stderr(), $($arg
 macro_rules!     die(($($arg:tt)*) => (println!("Aborting {}", format!($($arg)*)); ::std::process::exit(1);));
 
 fn build_props_sbt() -> String {
-    if let Ok(f) = File::open(build_props) {
+    if let Ok(f) = File::open(buildProps) {
         let f = BufReader::new(f);
         for line in f.lines() {
             let line = line.unwrap();
@@ -124,22 +125,22 @@ impl App {
         if self.sbt_version.is_empty() { self.sbt_version=sbt_release_version.to_owned() }
     }
 
-    fn add_java(&mut self, s: &str) {
-        self.vlog(&format!("[add_java] arg = '{}'", s));
+    fn addJava(&mut self, s: &str) {
+        self.vlog(&format!("[addJava] arg = '{}'", s));
         self.java_args.push(s.into());
     }
 
-    fn add_residual(&mut self, s: &str) {
+    fn addResidual(&mut self, s: &str) {
         self.vlog(&format!("[residual] arg = '{}'", s));
         self.residual_args.push(s.into());
     }
 
-    fn add_debugger(&mut self, port: u16) {
-        self.add_java("-Xdebug");
-        self.add_java(&format!("-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address={}", port));
+    fn addDebugger(&mut self, port: u16) {
+        self.addJava("-Xdebug");
+        self.addJava(&format!("-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address={}", port));
     }
 
-    fn exec_runner<S: AsRef<OsStr>>(&self, args: &[S]) {
+    fn execRunner<S: AsRef<OsStr>>(&self, args: &[S]) {
         self.vlog("# Executing command line:") && {
             for arg in args {
                 let arg = arg.as_ref();
@@ -224,20 +225,20 @@ are not special.
             match arg {
                 "-h" | "-help"           => { self.usage(); std::process::exit(1) },
                 "-v"                     => self.verbose = true,
-                "-jvm-debug"             => { let next = next(); require_arg("port", arg, &next); self.add_debugger(next.parse().unwrap()) },
-                s if s.starts_with("-J") => self.add_java(&s[2..]),
-                s                        => self.add_residual(s),
+                "-jvm-debug"             => { let next = next(); require_arg("port", arg, &next); self.addDebugger(next.parse().unwrap()) },
+                s if s.starts_with("-J") => self.addJava(&s[2..]),
+                s                        => self.addResidual(s),
             }
         }
     }
 
     fn run(&mut self) {
-        let argument_count = self.residual_args.len();
+        let argumentCount = self.residual_args.len();
 
         self.set_sbt_version();
         self.vlog(&format!("Detected sbt version {}", self.sbt_version));
 
-        if argument_count == 0 {
+        if argumentCount == 0 {
             self.vlog(&format!("Starting {}: invoke with -help for other options", *script_name));
             self.residual_args = vec!["shell".into()];
         }
@@ -268,7 +269,7 @@ are not special.
         exec_args.append(&mut self.sbt_commands.iter().map(AsRef::as_ref).collect());
         exec_args.append(&mut self.residual_args.iter().map(AsRef::as_ref).collect());
 
-        self.exec_runner(&exec_args)
+        self.execRunner(&exec_args)
     }
 }
 
