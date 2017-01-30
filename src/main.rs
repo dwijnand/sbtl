@@ -1,14 +1,16 @@
 //! A Rust port of sbt-extras.
 //! Author: Dale Wijnand <dale.wijnand@gmail.com>
 
+//#![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
-//#![allow(dead_code)]
 //#![allow(unused_assignments)]
+#![allow(unused_imports)]
 //#![allow(unused_variables)]
 
 use std::env::*;
 use std::ffi::OsStr;
+use std::fmt::Display;
 use std::fs;
 use std::fs::File;
 use std::io::{ BufReader, BufWriter, };
@@ -214,8 +216,7 @@ are not special.
   -J-X             pass option -X directly to the jvm (-J is stripped)
 ",
     script_name=*script_name,
-    // TODO: Lose the leading " " (introduce MkString typeclass?)
-    default_jvm_opts=default_jvm_opts().iter().fold(String::from(""), |acc, x| acc + " " + &x),
+    default_jvm_opts=default_jvm_opts().mk_string(" "),
 );
     }
 
@@ -285,4 +286,29 @@ fn main() {
     let mut app = App::new();
     app.process_args();
     app.run()
+}
+
+////
+
+trait MkString {
+    fn mk_string(self, sep: &str) -> String;
+}
+
+// TODO: Generalise this for something like impl<T: Display> MkString for Iterator<Item=T> {
+impl MkString for Vec<String> {
+    fn mk_string(self, sep: &str) -> String {
+        let mut first = true;
+
+        let mut s = String::new();
+        for x in self {
+            if first {
+                s += &x;
+                first = false;
+            } else {
+                s += sep;
+                s += &x;
+            }
+        }
+        s
+    }
 }
