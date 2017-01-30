@@ -291,12 +291,11 @@ fn main() {
 ////
 
 trait MkString {
-    fn mk_string(self, sep: &str) -> String;
+    fn mk_string(&self, sep: &str) -> String;
 }
 
-// TODO: Generalise this for something like impl<T: Display> MkString for Iterator<Item=T> {
-impl<T: Display> MkString for Vec<T> {
-    fn mk_string(self, sep: &str) -> String {
+impl<T: Display> MkString for [T] {
+    fn mk_string(&self, sep: &str) -> String {
         let mut first = true;
 
         let mut s = String::new();
