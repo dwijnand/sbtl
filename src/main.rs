@@ -125,12 +125,12 @@ impl App {
     }
 
     fn add_java(&mut self, s: &str) {
-        self.vlog(&format!("[add_java] arg = {}", s));
+        self.vlog(&format!("[add_java] arg = '{}'", s));
         self.java_args.push(s.into());
     }
 
     fn add_residual(&mut self, s: &str) {
-        self.vlog(&format!("[residual] arg = {}", s));
+        self.vlog(&format!("[residual] arg = '{}'", s));
         self.residual_args.push(s.into());
     }
 
