@@ -17,8 +17,6 @@ lazy_static! {
 
     static ref build_props: PathBuf = PathBuf::from("project/build.properties");
 
-    static ref sbt_launch_dir: PathBuf = { let mut p = PathBuf::from(&*HOME); p.push(".sbt/launchers"); p };
-
     static ref script_name: String = {
         let n = std::env::args().nth(0).unwrap();
         let n = Path::new(&n).file_name().unwrap().to_str().unwrap();
@@ -77,13 +75,6 @@ fn default_jvm_opts() -> Vec<String> {
     default_jvm_opts_common.iter().map(|x| x.to_string()).collect()
 }
 
-fn jar_file(version: &str) -> PathBuf {
-    let mut p = PathBuf::from(&*sbt_launch_dir);
-    p.push(version);
-    p.push("sbt-launch.jar");
-    p
-}
-
 fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
     echoerr!("Downloading sbt launcher for {}:", sbt_version);
     echoerr!("  From  {}", url);
@@ -109,6 +100,7 @@ struct App {
        sbt_version: String,
            verbose: bool,
           java_cmd: String,
+    sbt_launch_dir: PathBuf,
     extra_jvm_opts: Vec<String>,
          java_args: Vec<String>,
       sbt_commands: Vec<String>,
@@ -122,6 +114,7 @@ impl App {
              sbt_version: Default::default(),
                  verbose: Default::default(),
                 java_cmd: "java".into(),
+          sbt_launch_dir: { let mut p = PathBuf::from(&*HOME); p.push(".sbt/launchers"); p },
           extra_jvm_opts: Default::default(),
                java_args: Default::default(),
             sbt_commands: Default::default(),
@@ -177,16 +170,23 @@ impl App {
         std::process::exit(-1)
     }
 
+    fn jar_file(&self, version: &str) -> PathBuf {
+        let mut p = PathBuf::from(&self.sbt_launch_dir);
+        p.push(version);
+        p.push("sbt-launch.jar");
+        p
+    }
+
     fn acquire_sbt_jar(&mut self) -> bool {
         ({
-            self.sbt_jar = jar_file(&self.sbt_version);
+            self.sbt_jar = self.jar_file(&self.sbt_version);
             File::open(self.sbt_jar.as_path()).is_ok()
         }) || ({
             self.sbt_jar = PathBuf::from(&*HOME);
             self.sbt_jar.push(format!(".ivy2/local/org.scala-sbt/sbt-launch/{}/jars/sbt-launch.jar", self.sbt_version));
             File::open(self.sbt_jar.as_path()).is_ok()
         }) || ({
-            self.sbt_jar = jar_file(&self.sbt_version);
+            self.sbt_jar = self.jar_file(&self.sbt_version);
             download_url(&self.sbt_version, &make_url(&self.sbt_version), &self.sbt_jar)
         })
     }
