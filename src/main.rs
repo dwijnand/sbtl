@@ -240,6 +240,7 @@ are not special.
         let argument_count = self.residual_args.len();
 
         self.set_sbt_version();
+        self.vlog(&format!("Detected sbt version {}", self.sbt_version));
 
         if argument_count == 0 {
             self.vlog(&format!("Starting {}: invoke with -help for other options", *script_name));
