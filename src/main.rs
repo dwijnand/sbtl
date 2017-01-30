@@ -250,6 +250,14 @@ are not special.
             self.residual_args = vec!["shell".into()];
         }
 
+        // verify this is an sbt dir
+        if !File::open(PathBuf::from("build.sbt")).is_ok() && !PathBuf::from("project").is_dir() {
+            print!("\
+{pwd} doesn't appear to be an sbt project.
+", pwd=std::env::current_dir().unwrap().display());
+            std::process::exit(1);
+        }
+
         // no jar? download it.
         File::open(self.sbt_jar.as_path()).is_ok() || self.acquire_sbt_jar() || {
             // still no jar? uh-oh.
