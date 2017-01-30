@@ -24,11 +24,12 @@ lazy_static! {
         let n = Path::new(&n).file_name().unwrap().to_str().unwrap();
         n.to_string()
     };
-
 }
 
 const sbt_launch_ivy_release_repo: &'static str = "http://repo.typesafe.com/typesafe/ivy-releases";
 const sbt_launch_mvn_release_repo: &'static str = "http://repo.scala-sbt.org/scalasbt/maven-releases";
+
+const default_jvm_opts_common: [&'static str; 3] = ["-Xms512m", "-Xmx1536m", "-Xss2m"];
 
 macro_rules! echoerr(($($arg:tt)*) => (writeln!(&mut ::std::io::stderr(), $($arg)*).unwrap();));
 
@@ -68,6 +69,12 @@ fn make_url(version: &str) -> String {
         s if s.starts_with("0.")    => format!("{}/org.scala-sbt/sbt-launch/{}/sbt-launch.jar", base, version),
         _                           => format!("{}/org/scala-sbt/sbt-launch/{}/sbt-launch.jar", base, version),
     }
+}
+
+// MaxPermSize critical on pre-8 JVMs but incurs noisy warning on 8+
+fn default_jvm_opts() -> Vec<String> {
+    // TODO: Add -XX:MaxPermSize=384m if java < 8
+    default_jvm_opts_common.iter().map(|x| x.to_string()).collect()
 }
 
 fn jar_file(version: &str) -> PathBuf {
@@ -115,7 +122,7 @@ impl App {
              sbt_version: Default::default(),
                  verbose: Default::default(),
                 java_cmd: "java".into(),
-          extra_jvm_opts: vec!["-Xms512m".into(), "-Xmx1536m".into(), "-Xss2m".into()],
+          extra_jvm_opts: Default::default(),
                java_args: Default::default(),
             sbt_commands: Default::default(),
            residual_args: Default::default(),
@@ -187,7 +194,7 @@ impl App {
     fn usage(&mut self) {
         self.set_sbt_version();
         print!("\
-Usage: {} [options]
+Usage: {script_name} [options]
 
 Note that options which are passed along to sbt begin with -- whereas
 options to this runner use a single dash. Any sbt command can be scheduled
@@ -197,7 +204,15 @@ are not special.
   -h | -help         print this message
   -v                 verbose operation (this runner is chattier)
   -jvm-debug <port>  Turn on JVM debugging, open at the given port.
-", *script_name);
+
+  # passing options to the jvm - note it does NOT use JAVA_OPTS due to pollution
+  # The default set is used if JVM_OPTS is unset and no -jvm-opts file is found
+  <default>        {default_jvm_opts}
+  -J-X             pass option -X directly to the jvm (-J is stripped)
+",
+    script_name=*script_name,
+    // TODO: Lose the leading " " (introduce MkString typeclass?)
+    default_jvm_opts=default_jvm_opts().iter().fold(String::from(""), |acc, x| acc + " " + &x));
     }
 
     fn process_args(&mut self) {
@@ -212,10 +227,11 @@ are not special.
             let mut next = || -> String { args.next().unwrap_or("".into()) };
             let arg = arg.as_ref();
             match arg {
-                "-h" | "-help" => { self.usage(); std::process::exit(1) },
-                "-v"           => self.verbose = true,
-                "-jvm-debug"   => { let next = next(); require_arg("port", arg, &next); self.add_debugger(next.parse().unwrap()) },
-                s              => self.add_residual(s),
+                "-h" | "-help"           => { self.usage(); std::process::exit(1) },
+                "-v"                     => self.verbose = true,
+                "-jvm-debug"             => { let next = next(); require_arg("port", arg, &next); self.add_debugger(next.parse().unwrap()) },
+                s if s.starts_with("-J") => self.add_java(&s[2..]),
+                s                        => self.add_residual(s),
             }
         }
     }
@@ -236,6 +252,9 @@ are not special.
             println!("Download failed. Obtain the jar manually and place it at {}", self.sbt_jar.display());
             std::process::exit(1);
         };
+
+        self.vlog("Using default jvm options");
+        self.extra_jvm_opts=default_jvm_opts();
 
         let mut exec_args: Vec<&OsStr> = Vec::new();
         exec_args.push(self.java_cmd.as_ref());
