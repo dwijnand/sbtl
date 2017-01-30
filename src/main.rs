@@ -100,8 +100,8 @@ struct App {
            verbose: bool,
           java_cmd: String,
     sbt_launch_dir: PathBuf,
-    extra_jvm_opts: Vec<String>,
-         java_args: Vec<String>,
+    extra_jvm_opts: Vec<String>,   // args to jvm via files or environment variables
+         java_args: Vec<String>,   // pull -J and -D options to give to java
       sbt_commands: Vec<String>,
      residual_args: Vec<String>,
 }
@@ -207,6 +207,7 @@ are not special.
   # passing options to the jvm - note it does NOT use JAVA_OPTS due to pollution
   # The default set is used if JVM_OPTS is unset and no -jvm-opts file is found
   <default>        {default_jvm_opts}
+  -Dkey=val        pass -Dkey=val directly to the jvm
   -J-X             pass option -X directly to the jvm (-J is stripped)
 ",
     script_name=*script_name,
@@ -229,6 +230,7 @@ are not special.
                 "-h" | "-help"           => { self.usage(); exit(1) },
                 "-v"                     => self.verbose = true,
                 "-jvm-debug"             => { let next = next(); require_arg("port", arg, &next); self.addDebugger(next.parse().unwrap()) },
+                s if s.starts_with("-D") => self.addJava(s),
                 s if s.starts_with("-J") => self.addJava(&s[2..]),
                 s                        => self.addResidual(s),
             }
