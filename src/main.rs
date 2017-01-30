@@ -21,11 +21,7 @@ const default_jvm_opts_common: [&'static str; 3] = ["-Xms512m", "-Xmx1536m", "-X
 #[macro_use] extern crate lazy_static;
 lazy_static! {
     static ref HOME: PathBuf = std::env::home_dir().unwrap();
-    static ref script_name: String = {
-        let n = std::env::args().nth(0).unwrap();
-        let n = Path::new(&n).file_name().unwrap().to_str().unwrap();
-        n.to_string()
-    };
+    static ref script_name: String = std::env::current_exe().unwrap().file_name().unwrap().to_string_lossy().into_owned();
 }
 
 macro_rules! echoerr(($($arg:tt)*) => (writeln!(&mut ::std::io::stderr(), $($arg)*).unwrap();));
