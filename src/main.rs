@@ -13,13 +13,18 @@ use std::io::prelude::*;
 use std::path::{ Path, PathBuf };
 
 lazy_static! {
-    static ref HOME: PathBuf           = std::env::home_dir().unwrap();
+    static ref HOME: PathBuf = std::env::home_dir().unwrap();
+
+    static ref build_props: PathBuf = PathBuf::from("project/build.properties");
+
+    static ref sbt_launch_dir: PathBuf = { let mut p = PathBuf::from(&*HOME); p.push(".sbt/launchers"); p };
 
     static ref script_name: String = {
         let n = std::env::args().nth(0).unwrap();
         let n = Path::new(&n).file_name().unwrap().to_str().unwrap();
         n.to_string()
     };
+
 }
 
 const sbt_launch_ivy_release_repo: &'static str = "http://repo.typesafe.com/typesafe/ivy-releases";
@@ -28,6 +33,21 @@ const sbt_launch_mvn_release_repo: &'static str = "http://repo.scala-sbt.org/sca
 macro_rules! echoerr(($($arg:tt)*) => (writeln!(&mut ::std::io::stderr(), $($arg)*).unwrap();));
 
 fn die(s: &str) { println!("Aborting: {}", s); std::process::exit(1) }
+
+fn build_props_sbt() -> String {
+    if let Ok(f) = File::open(&*build_props) {
+        let f = BufReader::new(f);
+        for line in f.lines() {
+            let line = line.unwrap();
+            if line.starts_with("sbt.version") {
+                let line = line.replace("=", " ");
+                let line = line.replace("\r", " ");
+                return line.split_whitespace().nth(1).unwrap().to_owned();
+            }
+        }
+    }
+    "".to_owned()
+}
 
 fn url_base(version: &str) -> &'static str { match version {
     s if s.starts_with("0.7.")  => "http://simple-build-tool.googlecode.com",
@@ -48,6 +68,13 @@ fn make_url(version: &str) -> String {
         s if s.starts_with("0.")    => format!("{}/org.scala-sbt/sbt-launch/{}/sbt-launch.jar", base, version),
         _                           => format!("{}/org/scala-sbt/sbt-launch/{}/sbt-launch.jar", base, version),
     }
+}
+
+fn jar_file(version: &str) -> PathBuf {
+    let mut p = PathBuf::from(&*sbt_launch_dir);
+    p.push(version);
+    p.push("sbt-launch.jar");
+    p
 }
 
 fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
@@ -71,8 +98,6 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
 }
 
 struct App {
-       build_props: PathBuf,
-    sbt_launch_dir: PathBuf,
            sbt_jar: PathBuf,
        sbt_version: String,
            verbose: bool,
@@ -86,8 +111,6 @@ struct App {
 impl App {
     fn new() -> App {
         App {
-             build_props: PathBuf::from("project/build.properties"),
-          sbt_launch_dir: { let mut p = PathBuf::from(&*HOME); p.push(".sbt/launchers"); p },
                  sbt_jar: PathBuf::new(),
              sbt_version: Default::default(),
                  verbose: Default::default(),
@@ -101,23 +124,8 @@ impl App {
 
     fn vlog(&self, s: &str) -> bool { if self.verbose { echoerr!("{}", s); true } else { false } }
 
-    fn build_props_sbt(&self) -> String {
-        if let Ok(f) = File::open(&self.build_props) {
-            let f = BufReader::new(f);
-            for line in f.lines() {
-                let line = line.unwrap();
-                if line.starts_with("sbt.version") {
-                    let line = line.replace("=", " ");
-                    let line = line.replace("\r", " ");
-                    return line.split_whitespace().nth(1).unwrap().to_owned();
-                }
-            }
-        }
-        "".to_owned()
-    }
-
     fn set_sbt_version(&mut self) {
-        self.sbt_version=self.build_props_sbt();
+        self.sbt_version=build_props_sbt();
         // sbt_version="${sbt_explicit_version:-$(build_props_sbt)}"
         // [[ -n "$sbt_version" ]] || sbt_version=$sbt_release_version
     }
@@ -162,23 +170,16 @@ impl App {
         std::process::exit(-1)
     }
 
-    fn jar_file(&self, version: &str) -> PathBuf {
-        let mut p = PathBuf::from(&self.sbt_launch_dir);
-        p.push(version);
-        p.push("sbt-launch.jar");
-        p
-    }
-
     fn acquire_sbt_jar(&mut self) -> bool {
         ({
-            self.sbt_jar = self.jar_file(&self.sbt_version);
+            self.sbt_jar = jar_file(&self.sbt_version);
             File::open(self.sbt_jar.as_path()).is_ok()
         }) || ({
             self.sbt_jar = PathBuf::from(&*HOME);
             self.sbt_jar.push(format!(".ivy2/local/org.scala-sbt/sbt-launch/{}/jars/sbt-launch.jar", self.sbt_version));
             File::open(self.sbt_jar.as_path()).is_ok()
         }) || ({
-            self.sbt_jar = self.jar_file(&self.sbt_version);
+            self.sbt_jar = jar_file(&self.sbt_version);
             download_url(&self.sbt_version, &make_url(&self.sbt_version), &self.sbt_jar)
         })
     }
