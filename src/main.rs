@@ -1,10 +1,7 @@
 #![allow(non_upper_case_globals)]
-
 //#![allow(dead_code)]
 //#![allow(unused_assignments)]
 //#![allow(unused_variables)]
-
-#[macro_use] extern crate lazy_static;
 
 use std::ffi::OsStr;
 use std::fs::File;
@@ -14,11 +11,16 @@ use std::path::{ Path, PathBuf };
 
 const sbt_release_version: &'static str = "0.13.13";
 
+const build_props: &'static str = "project/build.properties";
+
+const sbt_launch_ivy_release_repo: &'static str = "http://repo.typesafe.com/typesafe/ivy-releases";
+const sbt_launch_mvn_release_repo: &'static str = "http://repo.scala-sbt.org/scalasbt/maven-releases";
+
+const default_jvm_opts_common: [&'static str; 3] = ["-Xms512m", "-Xmx1536m", "-Xss2m"];
+
+#[macro_use] extern crate lazy_static;
 lazy_static! {
     static ref HOME: PathBuf = std::env::home_dir().unwrap();
-
-    static ref build_props: PathBuf = PathBuf::from("project/build.properties");
-
     static ref script_name: String = {
         let n = std::env::args().nth(0).unwrap();
         let n = Path::new(&n).file_name().unwrap().to_str().unwrap();
@@ -26,17 +28,12 @@ lazy_static! {
     };
 }
 
-const sbt_launch_ivy_release_repo: &'static str = "http://repo.typesafe.com/typesafe/ivy-releases";
-const sbt_launch_mvn_release_repo: &'static str = "http://repo.scala-sbt.org/scalasbt/maven-releases";
-
-const default_jvm_opts_common: [&'static str; 3] = ["-Xms512m", "-Xmx1536m", "-Xss2m"];
-
 macro_rules! echoerr(($($arg:tt)*) => (writeln!(&mut ::std::io::stderr(), $($arg)*).unwrap();));
 
 fn die(s: &str) { println!("Aborting: {}", s); std::process::exit(1) }
 
 fn build_props_sbt() -> String {
-    if let Ok(f) = File::open(&*build_props) {
+    if let Ok(f) = File::open(build_props) {
         let f = BufReader::new(f);
         for line in f.lines() {
             let line = line.unwrap();
