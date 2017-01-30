@@ -291,15 +291,15 @@ fn main() {
 ////
 
 trait MkString {
-    fn mk_string(&self, sep: &str) -> String;
+    fn mk_string(self, sep: &str) -> String;
 }
 
-impl<T: Display> MkString for [T] {
-    fn mk_string(&self, sep: &str) -> String {
+impl<T: Display, I: IntoIterator<Item=T>> MkString for I {
+    fn mk_string(self, sep: &str) -> String {
         let mut first = true;
 
         let mut s = String::new();
-        for x in self {
+        for x in self.into_iter() {
             let x = format!("{}", x); // How else do you go from T: Display -> String/str?
             if first {
                 s += &x;
