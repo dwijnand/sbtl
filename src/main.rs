@@ -295,12 +295,13 @@ trait MkString {
 }
 
 // TODO: Generalise this for something like impl<T: Display> MkString for Iterator<Item=T> {
-impl MkString for Vec<String> {
+impl<T: Display> MkString for Vec<T> {
     fn mk_string(self, sep: &str) -> String {
         let mut first = true;
 
         let mut s = String::new();
         for x in self {
+            let x = format!("{}", x); // How else do you go from T: Display -> String/str?
             if first {
                 s += &x;
                 first = false;
