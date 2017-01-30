@@ -29,8 +29,7 @@ lazy_static! {
 }
 
 macro_rules! echoerr(($($arg:tt)*) => (writeln!(&mut ::std::io::stderr(), $($arg)*).unwrap();));
-
-fn die(s: &str) { println!("Aborting: {}", s); std::process::exit(1) }
+macro_rules!     die(($($arg:tt)*) => (println!("Aborting {}", format!($($arg)*)); ::std::process::exit(1);));
 
 fn build_props_sbt() -> String {
     if let Ok(f) = File::open(build_props) {
@@ -218,7 +217,7 @@ are not special.
     fn process_args(&mut self) {
         fn require_arg(tpe: &str, opt: &str, arg: &str) {
             if arg.is_empty() || &arg[0..1] == "-" {
-                die(&format!("{} requires <{}> argument", opt, tpe));
+                die!("{} requires <{}> argument", opt, tpe);
             }
         }
         let args = std::env::args();
