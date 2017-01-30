@@ -12,6 +12,8 @@ use std::io::BufReader;
 use std::io::prelude::*;
 use std::path::{ Path, PathBuf };
 
+const sbt_release_version: &'static str = "0.13.13";
+
 lazy_static! {
     static ref HOME: PathBuf = std::env::home_dir().unwrap();
 
@@ -127,7 +129,7 @@ impl App {
     fn set_sbt_version(&mut self) {
         self.sbt_version=build_props_sbt();
         // sbt_version="${sbt_explicit_version:-$(build_props_sbt)}"
-        // [[ -n "$sbt_version" ]] || sbt_version=$sbt_release_version
+        if self.sbt_version.is_empty() { self.sbt_version=sbt_release_version.to_owned() }
     }
 
     fn add_java(&mut self, s: &str) {
@@ -212,7 +214,8 @@ are not special.
 ",
     script_name=*script_name,
     // TODO: Lose the leading " " (introduce MkString typeclass?)
-    default_jvm_opts=default_jvm_opts().iter().fold(String::from(""), |acc, x| acc + " " + &x));
+    default_jvm_opts=default_jvm_opts().iter().fold(String::from(""), |acc, x| acc + " " + &x),
+);
     }
 
     fn process_args(&mut self) {
