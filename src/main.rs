@@ -105,15 +105,17 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
 }
 
 struct App {
-           sbt_jar: PathBuf,
-       sbt_version: String,
-           verbose: bool,
-          java_cmd: String,
-    sbt_launch_dir: PathBuf,
-    extra_jvm_opts: Vec<String>,   // args to jvm via files or environment variables
-         java_args: Vec<String>,   // pull -J and -D options to give to java
-      sbt_commands: Vec<String>,
-     residual_args: Vec<String>,
+               sbt_jar: PathBuf,
+           sbt_version: String,
+  sbt_explicit_version: String,
+               verbose: bool,
+              java_cmd: String,
+        sbt_launch_dir: PathBuf,
+        extra_jvm_opts: Vec<String>,   // args to jvm via files or environment variables
+             java_args: Vec<String>,   // pull -J and -D options to give to java
+          sbt_commands: Vec<String>,
+         residual_args: Vec<String>,
+               sbt_new: bool,
 }
 
 impl App {
@@ -121,6 +123,7 @@ impl App {
         App {
                  sbt_jar: PathBuf::new(),
              sbt_version: Default::default(),
+    sbt_explicit_version: Default::default(),
                  verbose: Default::default(),
                 java_cmd: "java".into(),
           sbt_launch_dir: { let mut p = PathBuf::from(&*HOME); p.push(".sbt/launchers"); p },
@@ -128,6 +131,7 @@ impl App {
                java_args: Default::default(),
             sbt_commands: Default::default(),
            residual_args: Default::default(),
+                 sbt_new: Default::default(),
         }
     }
 
@@ -135,8 +139,11 @@ impl App {
     fn vlog(&self, s: &str) -> bool { if self.verbose { echoerr!("{}", s) }; self.verbose }
 
     fn set_sbt_version(&mut self) {
-        self.sbt_version=build_props_sbt();
-        // sbt_version="${sbt_explicit_version:-$(build_props_sbt)}"
+        if self.sbt_explicit_version.is_empty() {
+            self.sbt_version=build_props_sbt()
+        } else {
+            self.sbt_version=self.sbt_explicit_version.to_owned()
+        }
         if self.sbt_version.is_empty() { self.sbt_version=sbt_release_version.to_owned() }
     }
 
@@ -260,6 +267,7 @@ are not special.
                 "-jvm-debug"             => { let next = next(); require_arg("port", arg, &next); self.addDebugger(next.parse().unwrap()) },
                 s if s.starts_with("-D") => self.addJava(s),
                 s if s.starts_with("-J") => self.addJava(&s[2..]),
+                "new"                    => { self.sbt_new=true; self.sbt_explicit_version=sbt_release_version.to_owned(); self.addResidual(arg) },
                 s                        => self.addResidual(s),
             }
         }
@@ -277,7 +285,7 @@ are not special.
         }
 
         // verify this is an sbt dir
-        if !File::open(PathBuf::from("build.sbt")).is_ok() && !PathBuf::from("project").is_dir() {
+        if !File::open(PathBuf::from("build.sbt")).is_ok() && !PathBuf::from("project").is_dir() && !self.sbt_new {
             print!("\
 {pwd} doesn't appear to be an sbt project.
 ", pwd=current_dir().unwrap().display());
