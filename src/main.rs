@@ -216,7 +216,7 @@ are not special.
   -J-X             pass option -X directly to the jvm (-J is stripped)
 ",
     script_name=*script_name,
-    default_jvm_opts=default_jvm_opts().mk_string(" "),
+    default_jvm_opts=default_jvm_opts().join(" "),
 );
     }
 
@@ -286,29 +286,4 @@ fn main() {
     let mut app = App::new();
     app.process_args();
     app.run()
-}
-
-////
-
-trait MkString {
-    fn mk_string(self, sep: &str) -> String;
-}
-
-impl<T: Display, I: IntoIterator<Item=T>> MkString for I {
-    fn mk_string(self, sep: &str) -> String {
-        let mut first = true;
-
-        let mut s = String::new();
-        for x in self.into_iter() {
-            let x = format!("{}", x); // How else do you go from T: Display -> String/str?
-            if first {
-                s += &x;
-                first = false;
-            } else {
-                s += sep;
-                s += &x;
-            }
-        }
-        s
-    }
 }
