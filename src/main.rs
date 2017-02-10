@@ -91,16 +91,13 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
 
     fs::create_dir_all(jar.parent().unwrap()).unwrap();
 
-    extern crate hyper;
-    let mut r = BufReader::new(hyper::client::Client::new().get(url).send().unwrap());
-    let mut buf = [0; 16384];
+    extern crate curl;
     let mut jar2 = BufWriter::new(File::create(jar).unwrap());
-    while {
-        let bc = r.read(&mut buf).unwrap();
-        jar2.write(&buf[0..bc]).unwrap();
-        bc > 0
-    } {}
-    jar2.flush().unwrap();
+    let mut easy = curl::easy::Easy::new();
+    easy.follow_location(true).unwrap();
+    easy.url(url).unwrap();
+    easy.write_function(move |data| Ok(jar2.write(data).unwrap())).unwrap();
+    easy.perform().unwrap();
     File::open(jar).is_ok()
 }
 

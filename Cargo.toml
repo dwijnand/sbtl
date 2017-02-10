@@ -1,8 +1,8 @@
 [package]
+authors = ["Dale Wijnand <dale.wijnand@gmail.com>"]
 name = "sbtl"
 version = "0.1.0"
-authors = ["Dale Wijnand <dale.wijnand@gmail.com>"]
 
 [dependencies]
-hyper = "0.9"
+curl = "0.4.5"
 lazy_static = "0.2"
