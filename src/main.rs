@@ -235,7 +235,8 @@ are not special.
 
   -h | -help         print this message
   -v                 verbose operation (this runner is chattier)
-  -jvm-debug <port>  Turn on JVM debugging, open at the given port.
+  -jvm-debug <port>  turn on JVM debugging, open at the given port.
+  -sbt-jar <path>    use the specified jar as the sbt launcher
 
   # passing options to the jvm - note it does NOT use JAVA_OPTS due to pollution
   # The default set is used if JVM_OPTS is unset and no -jvm-opts file is found
@@ -262,6 +263,7 @@ are not special.
                 "-h" | "-help"           => { self.usage(); exit(1) },
                 "-v"                     => self.verbose = true,
                 "-jvm-debug"             => { let next = next(); require_arg("port", arg, &next); self.addDebugger(next.parse().unwrap()) },
+                "-sbt-jar"               => { let next = next(); require_arg("path", arg, &next); self.sbt_jar = PathBuf::from(next) },
                 s if s.starts_with("-D") => self.addJava(s),
                 s if s.starts_with("-J") => self.addJava(&s[2..]),
                 "new"                    => { self.sbt_new=true; self.sbt_explicit_version=sbt_release_version.to_owned(); self.addResidual(arg) },
