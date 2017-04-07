@@ -19,7 +19,7 @@ use std::os::unix::process::CommandExt;
 use std::path::{ Path, PathBuf, };
 use std::process::{ Command, exit, };
 
-const sbt_release_version: &'static str = "0.13.13";
+const sbt_release_version: &'static str = "0.13.14";
 
 const buildProps: &'static str = "project/build.properties";
 

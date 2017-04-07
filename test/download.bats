@@ -50,9 +50,9 @@ EOS
 }
 
 @test "supports unix line endings (lf) in build.properties" {
-  write_to_properties_and_launch "sbt.version=0.13.13\n" "0.13.13"
+  write_to_properties_and_launch "sbt.version=0.13.14\n" "0.13.14"
 }
 
 @test "skips any irrelevant lines in build.properties" {
-  write_to_properties_and_launch "# hand written:\n\nsbt.version=0.13.13\nsbt.something = else\n" "0.13.13"
+  write_to_properties_and_launch "# hand written:\n\nsbt.version=0.13.14\nsbt.something = else\n" "0.13.14"
 }
