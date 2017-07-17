@@ -73,17 +73,6 @@ fn make_url(version: &str) -> String {
     }
 }
 
-fn getJavaVersion(java_cmd: &str) -> String {
-    let out = Command::new(java_cmd).arg("-version").output().unwrap();
-    String::from_utf8_lossy(&out.stderr)
-        .lines()
-        .filter(|l| l.contains("java version") || l.contains("openjdk version")) // grep -E -e '(java|openjdk) version'
-        .filter_map(|l| l.split_whitespace().nth(2))                             // awk '{ print $3 }'
-        .map(|l| l.chars().filter(|c| c.to_owned() != '"').collect::<String>())  // tr -d \"
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
 fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
     echoerr!("Downloading sbt launcher for {}:", sbt_version);
     echoerr!("  From  {}", url);
@@ -159,23 +148,8 @@ impl App {
         self.addJava(&format!("-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address={}", port));
     }
 
-    fn java_version(&self) -> u8 {
-        let version = getJavaVersion(&self.java_cmd);
-        self.vlog(&format!("Detected Java version: {}", version));
-        version[2..3].to_owned().parse().unwrap()
-    }
-
-    // MaxPermSize critical on pre-8 JVMs but incurs noisy warning on 8+
     fn default_jvm_opts(&self) -> Vec<String> {
-        let v = 8; // self.java_version(); // XXX Fix bats tests & restore this
-        if v >= 8 {
-            default_jvm_opts_common.iter().map(|x| x.to_string()).collect()
-        } else {
-            let mut opts: Vec<&'static str> = Vec::with_capacity(default_jvm_opts_common.len() + 1);
-            opts.push("-XX:MaxPermSize=384m");
-            opts.extend_from_slice(&default_jvm_opts_common);
-            opts.iter().map(|x| x.to_string()).collect()
-        }
+        default_jvm_opts_common.iter().map(|x| x.to_string()).collect()
     }
 
     fn execRunner<S: AsRef<OsStr>>(&self, args: &[S]) {
