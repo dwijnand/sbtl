@@ -1,4 +1,4 @@
-# [sbtl][] [![travis-badge][]][travis] [![gitter-badge][]][gitter]
+# [sbtl][] [![travis-badge][]][travis]
 
 A Rust port of [sbt-extras][].
 
