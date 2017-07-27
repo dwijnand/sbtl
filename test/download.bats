@@ -26,6 +26,7 @@ Downloading sbt launcher for $version:
   From  $(launcher_url $version)
     To  $TEST_ROOT/.sbt/launchers/$version/sbt-launch.jar
 java
+-XX:MaxPermSize=384m
 -Xms512m
 -Xmx1536m
 -Xss2m

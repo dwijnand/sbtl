@@ -148,8 +148,13 @@ impl App {
         self.addJava(&format!("-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address={}", port));
     }
 
+    // MaxPermSize critical on pre-8 JVMs but incurs noisy warning on 8+
     fn default_jvm_opts(&self) -> Vec<String> {
-        default_jvm_opts_common.iter().map(|x| x.to_string()).collect()
+        // TODO: Don't add MaxPermSize if on Java 8+
+        let mut opts: Vec<&'static str> = Vec::with_capacity(default_jvm_opts_common.len() + 1);
+        opts.push("-XX:MaxPermSize=384m");
+        opts.extend_from_slice(&default_jvm_opts_common);
+        opts.iter().map(|x| x.to_string()).collect()
     }
 
     fn execRunner<S: AsRef<OsStr>>(&self, args: &[S]) {
