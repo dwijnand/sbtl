@@ -30,6 +30,7 @@ const sbt_launch_mvn_release_repo: &'static str = "http://repo.scala-sbt.org/sca
 const default_jvm_opts_common: [&'static str; 3] = ["-Xms512m", "-Xmx1536m", "-Xss2m"];
 
 #[macro_use] extern crate serde_json;
+use serde_json::Value;
 
 extern crate jsonrpc_lite;
 use jsonrpc_lite::JsonRpc;
@@ -298,14 +299,23 @@ are not special.
     }
 }
 
+fn make_lsp_json_str(method: &str, params: Value) -> Result<String, serde_json::error::Error> {
+    let msg = json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": method,
+        "params": params,
+    });
+    let request = serde_json::to_string(&msg)?;
+    Ok(format!("Content-Length: {}\r\n\r\n{}", request.len(), request))
+}
+
 #[derive(Debug, PartialEq)]
 /// A message header, as described in the Language Server Protocol specification.
 enum LspHeader {
     ContentType,
     ContentLength(usize),
 }
-
-use serde_json::Value;
 
 /// Given a reference to a reader, attempts to read a Language Server Protocol message,
 /// blocking until a message is received.
@@ -366,39 +376,24 @@ fn main() {
     let uri = json.get("uri").unwrap().as_str().unwrap();
     // TODO: Use a less idiotic way to get the path from the URI
     let socketFilePath = &uri[8..];
-    let mut stream = UnixStream::connect(socketFilePath).unwrap();
 
-    let req = json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "initialize",
-    });
-    let json_content = serde_json::to_string(&req).unwrap();
-    let json_str = format!("Content-Length: {}\r\n\r\n{}", json_content.len(), json_content);
+    let mut stream = UnixStream::connect(socketFilePath).unwrap();
+    let json_str = make_lsp_json_str("initialize", json!({})).unwrap();
     stream.write_all(json_str.as_bytes()).unwrap();
     stream.flush().unwrap();
 
     let mut reader = BufReader::new(stream);
     handle_msg(&mut reader);
 
-    let args1 = args().skip(1); // skip the path of the executable
-    let str = {
+    let commandLine = {
+        let args1 = args().skip(1); // skip the path of the executable
+        // TODO: Make mk_string
         let mut s = args1.fold(String::new(), |acc, x| acc + &x + " ");
         let len = s.len() - 1;
         s.truncate(len);
         s
     };
-    let params2 = json!({
-        "commandLine": str
-    });
-    let req2 = json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "sbt/exec",
-        "params": params2
-    });
-    let json_content2 = serde_json::to_string(&req2).unwrap();
-    let json_str2 = format!("Content-Length: {}\r\n\r\n{}", json_content2.len(), json_content2);
+    let json_str2 = make_lsp_json_str("sbt/exec", json!({"commandLine": commandLine})).unwrap();
     let mut stream2 = UnixStream::connect(socketFilePath).unwrap();
     stream2.write_all(json_str2.as_bytes()).unwrap();
     stream2.flush().unwrap();
