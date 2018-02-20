@@ -388,4 +388,28 @@ fn main() {
 
     let mut reader = BufReader::new(stream);
     handle_msg(&mut reader);
+
+    let params2 = json!({
+        "commandLine": "compile"
+    });
+    let req2 = json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "sbt/exec",
+        "params": params2
+    });
+    let json_content2 = serde_json::to_string(&req2).unwrap();
+    let json_str2 = format!("Content-Length: {}\r\n\r\n{}", json_content2.len(), json_content2);
+    let mut stream2 = UnixStream::connect(socketFilePath).unwrap();
+    stream2.write_all(json_str2.as_bytes()).unwrap();
+    stream2.flush().unwrap();
+
+    let mut reader2 = BufReader::new(stream2);
+    handle_msg(&mut reader2);
+    handle_msg(&mut reader2);
+    handle_msg(&mut reader2);
+    handle_msg(&mut reader2);
+    handle_msg(&mut reader2);
+    handle_msg(&mut reader2);
+    handle_msg(&mut reader2);
 }
