@@ -1,7 +1,7 @@
 //! A Rust port of sbt-extras.
 //! Author: Dale Wijnand <dale.wijnand@gmail.com>
 
-//#![allow(dead_code)]
+#![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
 //#![allow(unused_assignments)]
@@ -29,6 +29,9 @@ const sbt_launch_mvn_release_repo: &'static str = "http://repo.scala-sbt.org/sca
 const default_jvm_opts_common: [&'static str; 3] = ["-Xms512m", "-Xmx1536m", "-Xss2m"];
 
 #[macro_use] extern crate lazy_static;
+
+extern crate sha1;
+
 lazy_static! {
     static ref HOME: PathBuf = home_dir().unwrap();
     static ref script_name: String = current_exe().unwrap().file_name().unwrap().to_string_lossy().into_owned();
@@ -293,7 +296,28 @@ are not special.
 }
 
 fn main() {
-    let mut app = App::new();
-    app.process_args();
-    app.run()
+    // let mut app = App::new();
+    // app.process_args();
+    // app.run()
+    let baseDirPath = current_dir().unwrap();
+    let portFilePath = { let mut p = baseDirPath; p.push("project/target/active.json"); p };
+    println!("{}", portFilePath.display());
+
+    // TODO: Use a less naive path to URI conversion
+    let portFileUri = format!("file://{}", portFilePath.display());
+    println!("{}", portFileUri);
+
+    // TODO: Figure out how to use sha1's opt-in hexdigest() method
+    let sha1 = sha1::Sha1::from(portFileUri);
+    use std::string::ToString;
+    let hash = sha1.digest().to_string();
+    println!("{}", hash);
+
+    // TODO: Add if hash.len() > 3 condition
+    let halfHash = &hash[0..hash.len() / 2];
+    println!("{}", halfHash);
+
+    let homeDir = home_dir().unwrap();
+    let socketFile = { let mut p = homeDir; p.push(".sbt/1.0/server"); p.push(halfHash); p.push("sock"); p };
+    println!("{}", socketFile.display());
 }
