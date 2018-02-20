@@ -31,6 +31,9 @@ const default_jvm_opts_common: [&'static str; 3] = ["-Xms512m", "-Xmx1536m", "-X
 
 #[macro_use] extern crate serde_json;
 
+extern crate jsonrpc_lite;
+use jsonrpc_lite::JsonRpc;
+
 #[macro_use] extern crate lazy_static;
 lazy_static! {
     static ref HOME: PathBuf = home_dir().unwrap();
@@ -295,6 +298,58 @@ are not special.
     }
 }
 
+#[derive(Debug, PartialEq)]
+/// A message header, as described in the Language Server Protocol specification.
+enum LspHeader {
+    ContentType,
+    ContentLength(usize),
+}
+
+use serde_json::Value;
+
+/// Given a reference to a reader, attempts to read a Language Server Protocol message,
+/// blocking until a message is received.
+pub fn read_message<B: BufRead>(reader: &mut B) -> Value {
+    let mut buffer = String::new();
+    let mut content_length: Option<usize> = None;
+
+    // read in headers.
+    loop {
+            buffer.clear();
+            reader.read_line(&mut buffer).unwrap();
+            match &buffer {
+                s if s.trim().len() == 0 => { break }, // empty line is end of headers
+                s => {
+                    match parse_header(s) {
+                        LspHeader::ContentLength(len) => content_length = Some(len),
+                        LspHeader::ContentType => (), // utf-8 only currently allowed value
+                    };
+                }
+            };
+        }
+
+    let content_length = content_length.ok_or(format!("missing content-length header: {}", buffer)).unwrap();
+    // message body isn't newline terminated, so we read content_length bytes
+    let mut body_buffer = vec![0; content_length];
+    reader.read_exact(&mut body_buffer).unwrap();
+    let body = String::from_utf8(body_buffer).unwrap();
+    serde_json::from_str::<Value>(&body).unwrap()
+}
+
+const HEADER_CONTENT_LENGTH: &'static str = "content-length";
+const HEADER_CONTENT_TYPE: &'static str = "content-type";
+
+/// Given a header string, attempts to extract and validate the name and value parts.
+fn parse_header(s: &str) -> LspHeader {
+    let split: Vec<String> = s.split(": ").map(|s| s.trim().to_lowercase()).collect();
+    if split.len() != 2 { panic!(format!("malformed header: {}", s)) }
+    match split[0].as_ref() {
+        HEADER_CONTENT_TYPE   => LspHeader::ContentType,
+        HEADER_CONTENT_LENGTH => LspHeader::ContentLength(usize::from_str_radix(&split[1], 10).unwrap()),
+        _ => panic!(format!("Unknown header: {}", s)),
+    }
+}
+
 fn main() {
     let baseDirPath = current_dir().unwrap();
     let portFilePath = { let mut p = baseDirPath; p.push("project/target/active.json"); p };
@@ -304,7 +359,6 @@ fn main() {
     let socketFilePath = &uri[8..];
     let mut stream = UnixStream::connect(socketFilePath).unwrap();
 
-    // send initialize
     // send compile
     // send 'runMain t.Main'
     // send 'runMain t.BadMain'
@@ -322,4 +376,12 @@ fn main() {
     let json_str = format!("Content-Length: {}\r\n\r\n{}", json_content.len(), json_content);
     stream.write_all(json_str.as_bytes()).unwrap();
     stream.flush().unwrap();
+
+    let mut reader = BufReader::new(stream);
+    match serde_json::from_value(read_message(&mut reader)).unwrap() {
+        JsonRpc::Request(obj)      => eprintln!("client received unexpected request: {:?}", obj),
+        JsonRpc::Notification(obj) => println!("recv notification: {:?}", obj),
+        JsonRpc::Success(obj)      => println!("recv success: {:?}", obj),
+        JsonRpc::Error(obj)        => println!("recv error: {:?}", obj),
+    }
 }
