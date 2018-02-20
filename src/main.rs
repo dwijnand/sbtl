@@ -350,6 +350,15 @@ fn parse_header(s: &str) -> LspHeader {
     }
 }
 
+fn handle_msg<B: BufRead>(mut reader: B) {
+    match serde_json::from_value(read_message(&mut reader)).unwrap() {
+        JsonRpc::Request(obj)      => eprintln!("client received unexpected request: {:?}", obj),
+        JsonRpc::Notification(obj) => println!("recv notification: {:?}", obj),
+        JsonRpc::Success(obj)      => println!("recv success: {:?}", obj),
+        JsonRpc::Error(obj)        => println!("recv error: {:?}", obj),
+    }
+}
+
 fn main() {
     let baseDirPath = current_dir().unwrap();
     let portFilePath = { let mut p = baseDirPath; p.push("project/target/active.json"); p };
@@ -378,10 +387,5 @@ fn main() {
     stream.flush().unwrap();
 
     let mut reader = BufReader::new(stream);
-    match serde_json::from_value(read_message(&mut reader)).unwrap() {
-        JsonRpc::Request(obj)      => eprintln!("client received unexpected request: {:?}", obj),
-        JsonRpc::Notification(obj) => println!("recv notification: {:?}", obj),
-        JsonRpc::Success(obj)      => println!("recv success: {:?}", obj),
-        JsonRpc::Error(obj)        => println!("recv error: {:?}", obj),
-    }
+    handle_msg(&mut reader);
 }
