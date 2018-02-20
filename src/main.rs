@@ -368,18 +368,10 @@ fn main() {
     let socketFilePath = &uri[8..];
     let mut stream = UnixStream::connect(socketFilePath).unwrap();
 
-    // send compile
-    // send 'runMain t.Main'
-    // send 'runMain t.BadMain'
-    // send n-word command from stdin
-
-    let init = json!({
-    });
     let req = json!({
         "jsonrpc": "2.0",
         "id": 1,
         "method": "initialize",
-        "params": init
     });
     let json_content = serde_json::to_string(&req).unwrap();
     let json_str = format!("Content-Length: {}\r\n\r\n{}", json_content.len(), json_content);
@@ -389,8 +381,15 @@ fn main() {
     let mut reader = BufReader::new(stream);
     handle_msg(&mut reader);
 
+    let args1 = args().skip(1); // skip the path of the executable
+    let str = {
+        let mut s = args1.fold(String::new(), |acc, x| acc + &x + " ");
+        let len = s.len() - 1;
+        s.truncate(len);
+        s
+    };
     let params2 = json!({
-        "commandLine": "compile"
+        "commandLine": str
     });
     let req2 = json!({
         "jsonrpc": "2.0",
@@ -412,4 +411,21 @@ fn main() {
     handle_msg(&mut reader2);
     handle_msg(&mut reader2);
     handle_msg(&mut reader2);
+    handle_msg(&mut reader2);
+    handle_msg(&mut reader2);
+    handle_msg(&mut reader2);
+    handle_msg(&mut reader2);
+    handle_msg(&mut reader2);
+    handle_msg(&mut reader2);
+    handle_msg(&mut reader2);
+    handle_msg(&mut reader2);
+    handle_msg(&mut reader2);
+
+    // Notification { jsonrpc: "2.0", method: "window/logMessage", params: Some(Map({"message": String("Done"), "type": Number(4)})) }
+    // Notification { jsonrpc: "2.0", method: "window/logMessage", params: Some(Map({"message": String("(Compile / \u{1b}[31mrunMain\u{1b}[0m) Nonzero exit code: 1"), "type": Number(1)})) }
+
+    // val Error = 1L
+    // val Warning = 2L
+    // val Info = 3L
+    // val Log = 4L
 }
