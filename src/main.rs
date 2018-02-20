@@ -15,6 +15,7 @@ use std::fs;
 use std::fs::File;
 use std::io::{ BufReader, BufWriter, };
 use std::io::prelude::*;
+use std::os::unix::net::UnixStream;
 use std::os::unix::process::CommandExt;
 use std::path::{ Path, PathBuf, };
 use std::process::{ Command, exit, };
@@ -28,10 +29,9 @@ const sbt_launch_mvn_release_repo: &'static str = "http://repo.scala-sbt.org/sca
 
 const default_jvm_opts_common: [&'static str; 3] = ["-Xms512m", "-Xmx1536m", "-Xss2m"];
 
+#[macro_use] extern crate serde_json;
+
 #[macro_use] extern crate lazy_static;
-
-extern crate sha1;
-
 lazy_static! {
     static ref HOME: PathBuf = home_dir().unwrap();
     static ref script_name: String = current_exe().unwrap().file_name().unwrap().to_string_lossy().into_owned();
@@ -296,28 +296,30 @@ are not special.
 }
 
 fn main() {
-    // let mut app = App::new();
-    // app.process_args();
-    // app.run()
     let baseDirPath = current_dir().unwrap();
     let portFilePath = { let mut p = baseDirPath; p.push("project/target/active.json"); p };
-    println!("{}", portFilePath.display());
+    let json: serde_json::Value = serde_json::de::from_reader(File::open(portFilePath).unwrap()).unwrap();
+    let uri = json.get("uri").unwrap().as_str().unwrap();
+    // TODO: Use a less idiotic way to get the path from the URI
+    let socketFilePath = &uri[8..];
+    let mut stream = UnixStream::connect(socketFilePath).unwrap();
 
-    // TODO: Use a less naive path to URI conversion
-    let portFileUri = format!("file://{}", portFilePath.display());
-    println!("{}", portFileUri);
+    // send initialize
+    // send compile
+    // send 'runMain t.Main'
+    // send 'runMain t.BadMain'
+    // send n-word command from stdin
 
-    // TODO: Figure out how to use sha1's opt-in hexdigest() method
-    let sha1 = sha1::Sha1::from(portFileUri);
-    use std::string::ToString;
-    let hash = sha1.digest().to_string();
-    println!("{}", hash);
-
-    // TODO: Add if hash.len() > 3 condition
-    let halfHash = &hash[0..hash.len() / 2];
-    println!("{}", halfHash);
-
-    let homeDir = home_dir().unwrap();
-    let socketFile = { let mut p = homeDir; p.push(".sbt/1.0/server"); p.push(halfHash); p.push("sock"); p };
-    println!("{}", socketFile.display());
+    let init = json!({
+    });
+    let req = json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": init
+    });
+    let json_content = serde_json::to_string(&req).unwrap();
+    let json_str = format!("Content-Length: {}\r\n\r\n{}", json_content.len(), json_content);
+    stream.write_all(json_str.as_bytes()).unwrap();
+    stream.flush().unwrap();
 }
