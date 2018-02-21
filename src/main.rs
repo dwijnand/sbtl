@@ -372,7 +372,9 @@ fn handle_msg<B: BufRead>(mut reader: B) {
 fn main() {
     let baseDirPath = current_dir().unwrap();
     let portFilePath = { let mut p = baseDirPath; p.push("project/target/active.json"); p };
-    let json: serde_json::Value = serde_json::de::from_reader(File::open(portFilePath).unwrap()).unwrap();
+    // TODO: Figure out a way to indicate the port file
+    let portFile = File::open(portFilePath).expect("failed to open port file");
+    let json: serde_json::Value = serde_json::de::from_reader(portFile).unwrap();
     let uri = json.get("uri").unwrap().as_str().unwrap();
     // TODO: Use a less idiotic way to get the path from the URI
     let socketFilePath = &uri[8..];
