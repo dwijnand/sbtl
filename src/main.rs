@@ -360,6 +360,16 @@ fn parse_header(s: &str) -> LspHeader {
     }
 }
 
+fn handle_msg_quietly<B: BufRead>(mut reader: B) {
+    match serde_json::from_value(read_message(&mut reader)).unwrap() {
+        JsonRpc::Request(obj)    => eprintln!("client received unexpected request: {:?}", obj),
+        JsonRpc::Notification(_) => (),
+        JsonRpc::Success(_)      => (),
+        JsonRpc::Error(obj)      => println!("recv error: {:?}", obj),
+    }
+}
+
+
 fn handle_msg<B: BufRead>(mut reader: B) {
     match serde_json::from_value(read_message(&mut reader)).unwrap() {
         JsonRpc::Request(obj)      => eprintln!("client received unexpected request: {:?}", obj),
@@ -385,7 +395,7 @@ fn main() {
     stream.flush().unwrap();
 
     let mut reader = BufReader::new(stream);
-    handle_msg(&mut reader);
+    handle_msg_quietly(&mut reader);
 
     let args1 = args().skip(1); // skip the path of the executable
     let commandLine = {
