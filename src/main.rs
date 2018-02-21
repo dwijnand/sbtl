@@ -375,7 +375,7 @@ fn main() {
     // TODO: Figure out a way to indicate the port file
     let portFile = File::open(portFilePath).expect("failed to open port file");
     let json: serde_json::Value = serde_json::de::from_reader(portFile).unwrap();
-    let uri = json.get("uri").unwrap().as_str().unwrap();
+    let uri = json["uri"].as_str().unwrap();
     // TODO: Use a less idiotic way to get the path from the URI
     let socketFilePath = &uri[8..];
 
