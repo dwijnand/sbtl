@@ -387,10 +387,10 @@ fn main() {
     let mut reader = BufReader::new(stream);
     handle_msg(&mut reader);
 
+    let args1 = args().skip(1); // skip the path of the executable
     let commandLine = {
-        let args1 = args().skip(1); // skip the path of the executable
         // TODO: Make mk_string
-        let mut s = args1.fold(String::new(), |acc, x| acc + &x + " ");
+        let mut s = args1.take(1).fold(String::new(), |acc, x| acc + &x + " ");
         let len = s.len() - 1;
         s.truncate(len);
         s
