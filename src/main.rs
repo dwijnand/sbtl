@@ -379,6 +379,68 @@ fn handle_msg<B: BufRead>(mut reader: B) {
     }
 }
 
+enum ExitCode { Success, Failure }
+
+fn handle_msg_to_exit_code<B: BufRead>(mut reader: B) -> ExitCode {
+    let mut done = false;
+    let mut success = false;
+    let mut failure = false;
+
+    loop {
+        let json_rpc = serde_json::from_value(read_message(&mut reader)).unwrap();
+        match json_rpc {
+            JsonRpc::Request(obj)          => eprintln!("client received unexpected request: {:?}", obj),
+            JsonRpc::Success(obj)          => println!("recv success: {:?}", obj),
+            JsonRpc::Error(obj)            => println!("recv error: {:?}", obj),
+            JsonRpc::Notification(ref obj) => {
+                match json_rpc.get_method() {
+                    Some("window/logMessage") => {
+                        let params0 = json_rpc.get_params().unwrap();
+                        let params = match params0 {
+                            jsonrpc_lite::Params::Array(_) => panic!("not expecting array"),
+                            jsonrpc_lite::Params::None(()) => panic!("not expecting none"),
+                            jsonrpc_lite::Params::Map(kvs) => kvs,
+                        };
+                        let lvl = params["type"].as_i64().unwrap();
+                        let msg = params["message"].as_str().unwrap();
+                        println!("{}", msg);
+                        if msg == "Exited with code 0" { success = true }
+                        if msg == "Done" { done = true }
+                        if lvl == 1 { failure = true }
+                    },
+                    Some("textDocument/publishDiagnostics") => {
+                        let params0 = json_rpc.get_params().unwrap();
+                        let params = match params0 {
+                            jsonrpc_lite::Params::Array(_) => panic!("not expecting array"),
+                            jsonrpc_lite::Params::None(()) => panic!("not expecting none"),
+                            jsonrpc_lite::Params::Map(kvs) => kvs,
+                        };
+                        let uri = params["uri"].as_str().unwrap();
+                        let diagnostics = params["diagnostics"].as_array().unwrap();
+                        for diagnostic in diagnostics {
+                            println!("{}: {}", uri, diagnostic);
+                        }
+                    },
+                    Some(_) | _ => println!("recv notification: {:?}", obj),
+                }
+            },
+        }
+
+        // val Error = 1L
+        // val Warning = 2L
+        // val Info = 3L
+        // val Log = 4L
+
+        // 'runMain t.Main'     reports "[log] Exited with code 0" and then "[log] Done"
+        // 'runMain t.BadMain'  reports "[log] Done"               and then "[error] Nonzero exit code: 1"
+        // 'compile' w/ error   reports "[error] Compilation failed"
+        // 'compile' w/o errors reports "[log] Done", but we can't distinguish that from BadMain's "[log] Done"...
+
+        if success && done { return ExitCode::Success }
+        if failure { return ExitCode::Failure }
+    }
+}
+
 fn main() {
     let baseDirPath = current_dir().unwrap();
     let portFilePath = { let mut p = baseDirPath; p.push("project/target/active.json"); p };
@@ -410,29 +472,9 @@ fn main() {
     stream2.write_all(json_str2.as_bytes()).unwrap();
     stream2.flush().unwrap();
 
-    let mut reader2 = BufReader::new(stream2);
-    handle_msg(&mut reader2);
-    handle_msg(&mut reader2);
-    handle_msg(&mut reader2);
-    handle_msg(&mut reader2);
-    handle_msg(&mut reader2);
-    handle_msg(&mut reader2);
-    handle_msg(&mut reader2);
-    handle_msg(&mut reader2);
-    handle_msg(&mut reader2);
-    handle_msg(&mut reader2);
-    handle_msg(&mut reader2);
-    handle_msg(&mut reader2);
-    handle_msg(&mut reader2);
-    handle_msg(&mut reader2);
-    handle_msg(&mut reader2);
-    handle_msg(&mut reader2);
-
-    // Notification { jsonrpc: "2.0", method: "window/logMessage", params: Some(Map({"message": String("Done"), "type": Number(4)})) }
-    // Notification { jsonrpc: "2.0", method: "window/logMessage", params: Some(Map({"message": String("(Compile / \u{1b}[31mrunMain\u{1b}[0m) Nonzero exit code: 1"), "type": Number(1)})) }
-
-    // val Error = 1L
-    // val Warning = 2L
-    // val Info = 3L
-    // val Log = 4L
+    let reader2 = BufReader::new(stream2);
+    match handle_msg_to_exit_code(reader2) {
+        ExitCode::Failure => exit(1),
+        ExitCode::Success => exit(0),
+    }
 }
