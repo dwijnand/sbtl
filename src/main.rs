@@ -96,6 +96,7 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
 }
 
 struct App {
+                  args: Vec<String>,
            current_dir: PathBuf,
            current_exe: PathBuf,
                sbt_jar: PathBuf,
@@ -113,10 +114,12 @@ struct App {
 
 impl App {
     fn new(
+               args: Vec<String>,
         current_dir: PathBuf,
         current_exe: PathBuf,
     ) -> App {
         App {
+                            args: args,
                      current_dir: current_dir,
                      current_exe: current_exe,
                          sbt_jar: PathBuf::new(),
@@ -250,11 +253,11 @@ are not special.
                 die!("{} requires <{}> argument", opt, tpe);
             }
         }
-        let mut args = env::args().skip(1); // skip the path of the executable
+        let args0 = self.args.clone(); // TODO: See if this clone can be avoided (or at least)
+        let mut args = args0.iter().skip(1); // skip the path of the executable
         while let Some(arg) = args.next() {
-            let mut next = || -> String { args.next().unwrap_or("".into()) };
-            let arg = arg.as_ref();
-            match arg {
+            let mut next = || -> String { args.next().unwrap_or(&"".to_string()).to_string() };
+            match arg.as_ref() {
                 "-h" | "-help"           => { self.usage(); exit(1) },
                 "-v"                     => self.verbose = true,
                 "-jvm-debug"             => { let next = next(); require_arg("port", arg, &next); self.addDebugger(next.parse().unwrap()) },
@@ -490,6 +493,7 @@ fn talk_to_client() {
 
 fn main() {
     let mut app = App::new(
+        env::args().collect(),
         env::current_dir().expect("failed to get the current working directory"),
         env::current_exe().expect("failed to get the full filesystem path of the current running executable"),
     );
