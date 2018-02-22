@@ -441,7 +441,7 @@ fn handle_msg_to_exit_code<B: BufRead>(mut reader: B) -> ExitCode {
     }
 }
 
-fn main() {
+fn talk_to_client() {
     let baseDirPath = current_dir().unwrap();
     let portFilePath = { let mut p = baseDirPath; p.push("project/target/active.json"); p };
     // TODO: Figure out a way to indicate the port file
@@ -477,4 +477,10 @@ fn main() {
         ExitCode::Failure => exit(1),
         ExitCode::Success => exit(0),
     }
+}
+
+fn main() {
+    let mut app = App::new();
+    app.process_args();
+    app.run()
 }
