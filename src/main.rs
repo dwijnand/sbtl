@@ -8,7 +8,7 @@
 #![allow(unused_imports)]
 //#![allow(unused_variables)]
 
-use std::env::*;
+use std::env;
 use std::ffi::OsStr;
 use std::fmt::Display;
 use std::fs;
@@ -37,8 +37,8 @@ use jsonrpc_lite::JsonRpc;
 
 #[macro_use] extern crate lazy_static;
 lazy_static! {
-    static ref HOME: PathBuf = home_dir().unwrap();
-    static ref script_name: String = current_exe().unwrap().file_name().unwrap().to_string_lossy().into_owned();
+    static ref HOME: PathBuf = env::home_dir().unwrap();
+    static ref script_name: String = env::current_exe().unwrap().file_name().unwrap().to_string_lossy().into_owned();
 }
 
 macro_rules! die(($($arg:tt)*) => (println!("Aborting {}", format!($($arg)*)); ::std::process::exit(1);));
@@ -240,7 +240,7 @@ are not special.
                 die!("{} requires <{}> argument", opt, tpe);
             }
         }
-        let mut args = args().skip(1); // skip the path of the executable
+        let mut args = env::args().skip(1); // skip the path of the executable
         while let Some(arg) = args.next() {
             let mut next = || -> String { args.next().unwrap_or("".into()) };
             let arg = arg.as_ref();
@@ -270,7 +270,7 @@ are not special.
 
         // verify this is an sbt dir
         if !File::open(PathBuf::from("build.sbt")).is_ok() && !PathBuf::from("project").is_dir() && !self.sbt_new {
-            println!("{pwd} doesn't appear to be an sbt project.", pwd=current_dir().unwrap().display());
+            println!("{pwd} doesn't appear to be an sbt project.", pwd=env::current_dir().unwrap().display());
             exit(1);
         }
 
@@ -439,6 +439,8 @@ fn handle_msg_to_exit_code<B: BufRead>(mut reader: B) -> ExitCode {
 }
 
 fn talk_to_client() {
+    use env::*;
+
     let baseDirPath = current_dir().unwrap();
     let portFilePath = { let mut p = baseDirPath; p.push("project/target/active.json"); p };
     // TODO: Figure out a way to indicate the port file
