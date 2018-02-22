@@ -8,7 +8,6 @@
 #![allow(unused_imports)]
 //#![allow(unused_variables)]
 
-use std::env;
 use std::ffi::OsStr;
 use std::fmt::Display;
 use std::fs;
@@ -455,7 +454,7 @@ fn handle_msg_to_exit_code<B: BufRead>(mut reader: B) -> ExitCode {
 }
 
 fn talk_to_client() {
-    use env::*;
+    use std::env::*;
 
     let baseDirPath = current_dir().unwrap();
     let portFilePath = { let mut p = baseDirPath; p.push("project/target/active.json"); p };
@@ -495,6 +494,7 @@ fn talk_to_client() {
 }
 
 fn main() {
+    use std::env;
     let mut app = App::new(
         env::home_dir().expect("failed to get the path of the current user's home directory"),
         env::args().collect(),
