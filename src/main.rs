@@ -113,17 +113,17 @@ struct App {
 impl App {
     fn new() -> App {
         App {
-                        sbt_jar: PathBuf::new(),
-                    sbt_version: Default::default(),
+                         sbt_jar: PathBuf::new(),
+                     sbt_version: Default::default(),
             sbt_explicit_version: Default::default(),
-                        verbose: Default::default(),
+                         verbose: Default::default(),
                         java_cmd: "java".into(),
-                sbt_launch_dir: { let mut p = PathBuf::from(&*HOME); p.push(".sbt/launchers"); p },
-                extra_jvm_opts: Default::default(),
-                    java_args: Default::default(),
+                  sbt_launch_dir: { let mut p = PathBuf::from(&*HOME); p.push(".sbt/launchers"); p },
+                  extra_jvm_opts: Default::default(),
+                       java_args: Default::default(),
                     sbt_commands: Default::default(),
-                residual_args: Default::default(),
-                        sbt_new: Default::default(),
+                   residual_args: Default::default(),
+                         sbt_new: Default::default(),
         }
     }
 
