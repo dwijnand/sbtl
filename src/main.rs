@@ -114,17 +114,17 @@ struct App {
 impl App {
     fn new() -> App {
         App {
-                 sbt_jar: PathBuf::new(),
-             sbt_version: Default::default(),
-    sbt_explicit_version: Default::default(),
-                 verbose: Default::default(),
-                java_cmd: "java".into(),
-          sbt_launch_dir: { let mut p = PathBuf::from(&*HOME); p.push(".sbt/launchers"); p },
-          extra_jvm_opts: Default::default(),
-               java_args: Default::default(),
-            sbt_commands: Default::default(),
-           residual_args: Default::default(),
-                 sbt_new: Default::default(),
+                        sbt_jar: PathBuf::new(),
+                    sbt_version: Default::default(),
+            sbt_explicit_version: Default::default(),
+                        verbose: Default::default(),
+                        java_cmd: "java".into(),
+                sbt_launch_dir: { let mut p = PathBuf::from(&*HOME); p.push(".sbt/launchers"); p },
+                extra_jvm_opts: Default::default(),
+                    java_args: Default::default(),
+                    sbt_commands: Default::default(),
+                residual_args: Default::default(),
+                        sbt_new: Default::default(),
         }
     }
 
@@ -230,9 +230,9 @@ are not special.
   -Dkey=val        pass -Dkey=val directly to the jvm
   -J-X             pass option -X directly to the jvm (-J is stripped)
 ",
-    script_name=*script_name,
-    default_jvm_opts=self.default_jvm_opts().join(" "),
-);
+            script_name=*script_name,
+            default_jvm_opts=self.default_jvm_opts().join(" "),
+        );
     }
 
     fn process_args(&mut self) {
@@ -271,9 +271,7 @@ are not special.
 
         // verify this is an sbt dir
         if !File::open(PathBuf::from("build.sbt")).is_ok() && !PathBuf::from("project").is_dir() && !self.sbt_new {
-            print!("\
-{pwd} doesn't appear to be an sbt project.
-", pwd=current_dir().unwrap().display());
+            println!("{pwd} doesn't appear to be an sbt project.", pwd=current_dir().unwrap().display());
             exit(1);
         }
 
