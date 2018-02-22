@@ -41,8 +41,7 @@ lazy_static! {
     static ref script_name: String = current_exe().unwrap().file_name().unwrap().to_string_lossy().into_owned();
 }
 
-macro_rules! echoerr(($($arg:tt)*) => (writeln!(&mut ::std::io::stderr(), $($arg)*).unwrap();));
-macro_rules!     die(($($arg:tt)*) => (println!("Aborting {}", format!($($arg)*)); ::std::process::exit(1);));
+macro_rules! die(($($arg:tt)*) => (println!("Aborting {}", format!($($arg)*)); ::std::process::exit(1);));
 
 fn build_props_sbt() -> String {
     if let Ok(f) = File::open(buildProps) {
@@ -81,9 +80,9 @@ fn make_url(version: &str) -> String {
 }
 
 fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
-    echoerr!("Downloading sbt launcher for {}:", sbt_version);
-    echoerr!("  From  {}", url);
-    echoerr!("    To  {}", jar.display());
+    eprintln!("Downloading sbt launcher for {}:", sbt_version);
+    eprintln!("  From  {}", url);
+    eprintln!("    To  {}", jar.display());
 
     fs::create_dir_all(jar.parent().unwrap()).unwrap();
 
@@ -129,7 +128,7 @@ impl App {
     }
 
     // TODO: See if this can become a macro
-    fn vlog(&self, s: &str) -> bool { if self.verbose { echoerr!("{}", s) }; self.verbose }
+    fn vlog(&self, s: &str) -> bool { if self.verbose { eprintln!("{}", s) }; self.verbose }
 
     fn set_sbt_version(&mut self) {
         if self.sbt_explicit_version.is_empty() {
@@ -171,9 +170,9 @@ impl App {
                 if !arg.is_empty() {
                     let arg = arg.to_string_lossy();
                     if arg.contains(" ") {
-                        echoerr!("\"{}\"", arg);
+                        eprintln!("\"{}\"", arg);
                     } else {
-                        echoerr!("{}", arg);
+                        eprintln!("{}", arg);
                     }
                 }
             }
