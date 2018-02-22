@@ -34,10 +34,6 @@ use serde_json::Value;
 extern crate jsonrpc_lite;
 use jsonrpc_lite::JsonRpc;
 
-#[macro_use] extern crate lazy_static;
-lazy_static! {
-}
-
 macro_rules! die(($($arg:tt)*) => (println!("Aborting {}", format!($($arg)*)); ::std::process::exit(1);));
 
 fn build_props_sbt() -> String {
