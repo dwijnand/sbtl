@@ -97,6 +97,7 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
 }
 
 struct App {
+           current_dir: PathBuf,
                sbt_jar: PathBuf,
            sbt_version: String,
   sbt_explicit_version: String,
@@ -111,8 +112,11 @@ struct App {
 }
 
 impl App {
-    fn new() -> App {
+    fn new(
+        current_dir: PathBuf,
+    ) -> App {
         App {
+                     current_dir: current_dir,
                          sbt_jar: PathBuf::new(),
                      sbt_version: Default::default(),
             sbt_explicit_version: Default::default(),
@@ -270,7 +274,7 @@ are not special.
 
         // verify this is an sbt dir
         if !File::open(PathBuf::from("build.sbt")).is_ok() && !PathBuf::from("project").is_dir() && !self.sbt_new {
-            println!("{pwd} doesn't appear to be an sbt project.", pwd=env::current_dir().unwrap().display());
+            println!("{pwd} doesn't appear to be an sbt project.", pwd=self.current_dir.display());
             exit(1);
         }
 
@@ -479,7 +483,9 @@ fn talk_to_client() {
 }
 
 fn main() {
-    let mut app = App::new();
+    let mut app = App::new(
+        env::current_dir().expect("failed to get the current working directory"),
+    );
     app.process_args();
     app.run()
 }
