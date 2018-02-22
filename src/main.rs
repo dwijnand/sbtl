@@ -8,7 +8,6 @@
 #![allow(unused_imports)]
 //#![allow(unused_variables)]
 
-use std::env;
 use std::ffi::OsStr;
 use std::fmt::Display;
 use std::fs;
@@ -35,11 +34,11 @@ use serde_json::Value;
 extern crate jsonrpc_lite;
 use jsonrpc_lite::JsonRpc;
 
-#[macro_use] extern crate lazy_static;
-lazy_static! {
-    static ref HOME: PathBuf = env::home_dir().unwrap();
-    static ref script_name: String = env::current_exe().unwrap().file_name().unwrap().to_string_lossy().into_owned();
-}
+// #[macro_use] extern crate lazy_static;
+// lazy_static! {
+//     static ref HOME: PathBuf = env::home_dir().unwrap();
+//     static ref script_name: String = env::current_exe().unwrap().file_name().unwrap().to_string_lossy().into_owned();
+// }
 
 macro_rules! die(($($arg:tt)*) => (println!("Aborting {}", format!($($arg)*)); ::std::process::exit(1);));
 
@@ -97,6 +96,10 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
 }
 
 struct App {
+              home_dir: PathBuf,
+                  args: Vec<String>,
+           current_dir: PathBuf,
+           current_exe: PathBuf,
                sbt_jar: PathBuf,
            sbt_version: String,
   sbt_explicit_version: String,
@@ -111,14 +114,23 @@ struct App {
 }
 
 impl App {
-    fn new() -> App {
+    fn new(
+           home_dir: PathBuf,
+               args: Vec<String>,
+        current_dir: PathBuf,
+        current_exe: PathBuf,
+    ) -> App {
         App {
+                        home_dir: home_dir,
+                            args: args,
+                     current_dir: current_dir,
+                     current_exe: current_exe,
                          sbt_jar: PathBuf::new(),
                      sbt_version: Default::default(),
             sbt_explicit_version: Default::default(),
                          verbose: Default::default(),
                         java_cmd: "java".into(),
-                  sbt_launch_dir: { let mut p = PathBuf::from(&*HOME); p.push(".sbt/launchers"); p },
+                  sbt_launch_dir: { let mut p = PathBuf::from(&home_dir); p.push(".sbt/launchers"); p },
                   extra_jvm_opts: Default::default(),
                        java_args: Default::default(),
                     sbt_commands: Default::default(),
@@ -129,6 +141,10 @@ impl App {
 
     // TODO: See if this can become a macro
     fn vlog(&self, s: &str) -> bool { if self.verbose { eprintln!("{}", s) }; self.verbose }
+
+    fn script_name(&self) -> String {
+        self.current_exe.file_name().unwrap().to_string_lossy().into_owned()
+    }
 
     fn set_sbt_version(&mut self) {
         if self.sbt_explicit_version.is_empty() {
@@ -199,7 +215,7 @@ impl App {
             self.sbt_jar = self.jar_file(&self.sbt_version);
             File::open(self.sbt_jar.as_path()).is_ok()
         }) || ({
-            self.sbt_jar = PathBuf::from(&*HOME);
+            self.sbt_jar = PathBuf::from(self.home_dir);
             self.sbt_jar.push(format!(".ivy2/local/org.scala-sbt/sbt-launch/{}/jars/sbt-launch.jar", self.sbt_version));
             File::open(self.sbt_jar.as_path()).is_ok()
         }) || ({
@@ -229,7 +245,7 @@ are not special.
   -Dkey=val        pass -Dkey=val directly to the jvm
   -J-X             pass option -X directly to the jvm (-J is stripped)
 ",
-            script_name=*script_name,
+            script_name=self.script_name(),
             default_jvm_opts=self.default_jvm_opts().join(" "),
         );
     }
@@ -240,9 +256,9 @@ are not special.
                 die!("{} requires <{}> argument", opt, tpe);
             }
         }
-        let mut args = env::args().skip(1); // skip the path of the executable
+        let mut args = self.args.iter().skip(1); // skip the path of the executable
         while let Some(arg) = args.next() {
-            let mut next = || -> String { args.next().unwrap_or("".into()) };
+            let mut next = || -> &str { args.next().unwrap_or(&"".to_string()) };
             let arg = arg.as_ref();
             match arg {
                 "-h" | "-help"           => { self.usage(); exit(1) },
@@ -264,13 +280,13 @@ are not special.
         self.vlog(&format!("Detected sbt version {}", self.sbt_version));
 
         if argumentCount == 0 {
-            self.vlog(&format!("Starting {}: invoke with -help for other options", *script_name));
+            self.vlog(&format!("Starting {}: invoke with -help for other options", self.script_name()));
             self.residual_args = vec!["shell".into()];
         }
 
         // verify this is an sbt dir
         if !File::open(PathBuf::from("build.sbt")).is_ok() && !PathBuf::from("project").is_dir() && !self.sbt_new {
-            println!("{pwd} doesn't appear to be an sbt project.", pwd=env::current_dir().unwrap().display());
+            println!("{pwd} doesn't appear to be an sbt project.", pwd=self.current_dir.display());
             exit(1);
         }
 
@@ -439,7 +455,7 @@ fn handle_msg_to_exit_code<B: BufRead>(mut reader: B) -> ExitCode {
 }
 
 fn talk_to_client() {
-    use env::*;
+    use std::env::*;
 
     let baseDirPath = current_dir().unwrap();
     let portFilePath = { let mut p = baseDirPath; p.push("project/target/active.json"); p };
@@ -479,7 +495,12 @@ fn talk_to_client() {
 }
 
 fn main() {
-    let mut app = App::new();
+    let mut app = App::new(
+        std::env::home_dir().expect("failed to get the path of the current user's home directory"),
+        std::env::args().collect(),
+        std::env::current_dir().expect("failed to get the current working directory"),
+        std::env::current_exe().expect("failed to get the full filesystem path of the current running executable"),
+    );
     app.process_args();
     app.run()
 }
