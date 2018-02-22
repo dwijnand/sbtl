@@ -37,7 +37,6 @@ use jsonrpc_lite::JsonRpc;
 
 #[macro_use] extern crate lazy_static;
 lazy_static! {
-    static ref HOME: PathBuf = env::home_dir().unwrap();
 }
 
 macro_rules! die(($($arg:tt)*) => (println!("Aborting {}", format!($($arg)*)); ::std::process::exit(1);));
@@ -96,6 +95,7 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
 }
 
 struct App {
+              home_dir: PathBuf,
                   args: Vec<String>,
            current_dir: PathBuf,
            current_exe: PathBuf,
@@ -114,11 +114,14 @@ struct App {
 
 impl App {
     fn new(
+           home_dir: PathBuf,
                args: Vec<String>,
         current_dir: PathBuf,
         current_exe: PathBuf,
     ) -> App {
+        let home_dir_clone = home_dir.clone(); // TODO: See if this can be inlined
         App {
+                        home_dir: home_dir,
                             args: args,
                      current_dir: current_dir,
                      current_exe: current_exe,
@@ -127,7 +130,7 @@ impl App {
             sbt_explicit_version: Default::default(),
                          verbose: Default::default(),
                         java_cmd: "java".into(),
-                  sbt_launch_dir: { let mut p = PathBuf::from(&*HOME); p.push(".sbt/launchers"); p },
+                  sbt_launch_dir: { let mut p = home_dir_clone; p.push(".sbt/launchers"); p },
                   extra_jvm_opts: Default::default(),
                        java_args: Default::default(),
                     sbt_commands: Default::default(),
@@ -212,7 +215,7 @@ impl App {
             self.sbt_jar = self.jar_file(&self.sbt_version);
             File::open(self.sbt_jar.as_path()).is_ok()
         }) || ({
-            self.sbt_jar = PathBuf::from(&*HOME);
+            self.sbt_jar = PathBuf::from(&self.home_dir);
             self.sbt_jar.push(format!(".ivy2/local/org.scala-sbt/sbt-launch/{}/jars/sbt-launch.jar", self.sbt_version));
             File::open(self.sbt_jar.as_path()).is_ok()
         }) || ({
@@ -493,6 +496,7 @@ fn talk_to_client() {
 
 fn main() {
     let mut app = App::new(
+        env::home_dir().expect("failed to get the path of the current user's home directory"),
         env::args().collect(),
         env::current_dir().expect("failed to get the current working directory"),
         env::current_exe().expect("failed to get the full filesystem path of the current running executable"),
