@@ -38,7 +38,6 @@ use jsonrpc_lite::JsonRpc;
 #[macro_use] extern crate lazy_static;
 lazy_static! {
     static ref HOME: PathBuf = env::home_dir().unwrap();
-    static ref script_name: String = env::current_exe().unwrap().file_name().unwrap().to_string_lossy().into_owned();
 }
 
 macro_rules! die(($($arg:tt)*) => (println!("Aborting {}", format!($($arg)*)); ::std::process::exit(1);));
@@ -98,6 +97,7 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
 
 struct App {
            current_dir: PathBuf,
+           current_exe: PathBuf,
                sbt_jar: PathBuf,
            sbt_version: String,
   sbt_explicit_version: String,
@@ -114,9 +114,11 @@ struct App {
 impl App {
     fn new(
         current_dir: PathBuf,
+        current_exe: PathBuf,
     ) -> App {
         App {
                      current_dir: current_dir,
+                     current_exe: current_exe,
                          sbt_jar: PathBuf::new(),
                      sbt_version: Default::default(),
             sbt_explicit_version: Default::default(),
@@ -133,6 +135,10 @@ impl App {
 
     // TODO: See if this can become a macro
     fn vlog(&self, s: &str) -> bool { if self.verbose { eprintln!("{}", s) }; self.verbose }
+
+    fn script_name(&self) -> String {
+        self.current_exe.file_name().unwrap().to_string_lossy().into_owned()
+    }
 
     fn set_sbt_version(&mut self) {
         if self.sbt_explicit_version.is_empty() {
@@ -233,7 +239,7 @@ are not special.
   -Dkey=val        pass -Dkey=val directly to the jvm
   -J-X             pass option -X directly to the jvm (-J is stripped)
 ",
-            script_name=*script_name,
+            script_name=self.script_name(),
             default_jvm_opts=self.default_jvm_opts().join(" "),
         );
     }
@@ -268,7 +274,7 @@ are not special.
         self.vlog(&format!("Detected sbt version {}", self.sbt_version));
 
         if argumentCount == 0 {
-            self.vlog(&format!("Starting {}: invoke with -help for other options", *script_name));
+            self.vlog(&format!("Starting {}: invoke with -help for other options", self.script_name()));
             self.residual_args = vec!["shell".into()];
         }
 
@@ -485,6 +491,7 @@ fn talk_to_client() {
 fn main() {
     let mut app = App::new(
         env::current_dir().expect("failed to get the current working directory"),
+        env::current_exe().expect("failed to get the full filesystem path of the current running executable"),
     );
     app.process_args();
     app.run()
