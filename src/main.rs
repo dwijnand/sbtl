@@ -450,10 +450,8 @@ fn handle_msg_to_exit_code<B: BufRead>(mut reader: B) -> ExitCode {
 fn talk_to_client() {
     use std::env::*;
 
-    let baseDirPath = current_dir().unwrap();
-    let portFilePath = { let mut p = baseDirPath; p.push("project/target/active.json"); p };
-    // TODO: Figure out a way to indicate the port file
-    let portFile = File::open(portFilePath).expect("failed to open port file");
+    // TODO: Figure out a way to indicate the port file in the error message
+    let portFile = File::open("project/target/active.json").expect("failed to open port file");
     let json: serde_json::Value = serde_json::de::from_reader(portFile).unwrap();
     let uri = json["uri"].as_str().unwrap();
     // TODO: Use a less idiotic way to get the path from the URI
