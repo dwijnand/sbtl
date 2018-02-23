@@ -133,7 +133,7 @@ impl App {
     }
 
     // TODO: See if this can become a macro
-    fn vlog(&self, s: &str) -> bool { if self.verbose { eprintln!("{}", s) }; self.verbose }
+    fn vlog(&self, s: &str) { if self.verbose { eprintln!("{}", s) } }
 
     fn script_name(&self) -> String {
         self.current_exe.file_name().unwrap().to_string_lossy().into_owned()
@@ -173,15 +173,16 @@ impl App {
     }
 
     fn execRunner<S: AsRef<OsStr>>(&self, args: &[S]) {
-        self.vlog("# Executing command line:") && {
+        self.vlog("# Executing command line:");
+        if self.verbose {
             for arg in args {
                 let arg = arg.as_ref();
                 if !arg.is_empty() {
                     let arg = arg.to_string_lossy();
                     if arg.contains(" ") {
-                        eprintln!("\"{}\"", arg);
+                        eprintln!("\"{}\"", arg)
                     } else {
-                        eprintln!("{}", arg);
+                        eprintln!("{}", arg)
                     }
                 }
             }
