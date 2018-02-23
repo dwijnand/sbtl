@@ -37,18 +37,16 @@ use jsonrpc_lite::JsonRpc;
 macro_rules! die(($($arg:tt)*) => (println!("Aborting {}", format!($($arg)*)); ::std::process::exit(1);));
 
 fn build_props_sbt() -> String {
-    if let Ok(f) = File::open(buildProps) {
-        let f = BufReader::new(f);
-        for line in f.lines() {
-            let line = line.unwrap();
-            if line.starts_with("sbt.version") {
-                let line = line.replace("=", " ");
-                let line = line.replace("\r", " ");
-                return line.split_whitespace().nth(1).unwrap().to_owned();
-            }
-        }
-    }
-    "".to_owned()
+    File::open(buildProps)
+        .ok()
+        .and_then(|f|
+            BufReader::new(f)
+                .lines()
+                .map(|l| l.expect("reading lines from build properties wouldn't fail"))
+                .find(|l| l.starts_with("sbt.version"))
+                .map(|l| l.split("=").nth(1).expect("an sbt version on the right of sbt.version=").to_owned())
+        )
+        .unwrap_or("".to_owned())
 }
 
 fn url_base(version: &str) -> &'static str { match version {
