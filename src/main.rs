@@ -21,7 +21,7 @@ use std::process::{ Command, exit, };
 
 const sbt_release_version: &'static str = "0.13.16";
 
-const buildProps: &'static str = "project/build.properties";
+const build_props: &'static str = "project/build.properties";
 
 const sbt_launch_ivy_release_repo: &'static str = "http://repo.typesafe.com/typesafe/ivy-releases";
 const sbt_launch_mvn_release_repo: &'static str = "http://repo.scala-sbt.org/scalasbt/maven-releases";
@@ -37,7 +37,7 @@ use jsonrpc_lite::JsonRpc;
 macro_rules! die(($($arg:tt)*) => (println!("Aborting {}", format!($($arg)*)); ::std::process::exit(1);));
 
 fn build_props_sbt() -> String {
-    File::open(buildProps)
+    File::open(build_props)
         .ok()
         .and_then(|f|
             BufReader::new(f)
