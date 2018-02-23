@@ -108,12 +108,12 @@ struct App {
 }
 
 impl App {
-    fn new(
-           home_dir: PathBuf,
-               args: Vec<String>,
-        current_dir: PathBuf,
-        current_exe: PathBuf,
-    ) -> App {
+    fn from_env() -> App {
+        use std::env::*;
+        let home_dir = home_dir().expect("failed to get the path of the current user's home directory");
+        let args = args().collect();
+        let current_dir = current_dir().expect("failed to get the current working directory");
+        let current_exe = current_exe().expect("failed to get the full filesystem path of the current running executable");
         let home_dir_clone = home_dir.clone(); // TODO: See if this can be inlined
         App {
                         home_dir: home_dir,
@@ -245,7 +245,7 @@ are not special.
         );
     }
 
-    fn process_args(&mut self) {
+    fn run(&mut self) {
         fn require_arg(tpe: &str, opt: &str, arg: &str) {
             if arg.is_empty() || &arg[0..1] == "-" {
                 die!("{} requires <{}> argument", opt, tpe);
@@ -266,9 +266,7 @@ are not special.
                 s                        => self.addResidual(s),
             }
         }
-    }
 
-    fn run(&mut self) {
         let argumentCount = self.residual_args.len();
 
         self.set_sbt_version();
@@ -490,13 +488,5 @@ fn talk_to_client() {
 }
 
 fn main() {
-    use std::env;
-    let mut app = App::new(
-        env::home_dir().expect("failed to get the path of the current user's home directory"),
-        env::args().collect(),
-        env::current_dir().expect("failed to get the current working directory"),
-        env::current_exe().expect("failed to get the full filesystem path of the current running executable"),
-    );
-    app.process_args();
-    app.run()
+    App::from_env().run();
 }
