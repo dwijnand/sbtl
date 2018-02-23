@@ -44,7 +44,7 @@ fn build_props_sbt() -> String {
                 .lines()
                 .map(|l| l.expect("reading lines from build properties wouldn't fail"))
                 .find(|l| l.starts_with("sbt.version"))
-                .map(|l| l.split("=").nth(1).expect("an sbt version on the right of sbt.version=").to_owned())
+                .map(|l| l.split("=").nth(1).expect("an sbt version on the right of sbt.version=").trim().to_owned())
         )
         .unwrap_or("".to_owned())
 }
