@@ -159,19 +159,19 @@ impl App {
         if self.sbt_version.is_empty() { self.sbt_version=sbt_release_version.to_owned() }
     }
 
-    fn addJava(&mut self, s: &str) {
-        self.vlog(&format!("[addJava] arg = '{}'", s));
+    fn add_java(&mut self, s: &str) {
+        self.vlog(&format!("[java] arg = '{}'", s));
         self.java_args.push(s.into());
     }
 
-    fn addResidual(&mut self, s: &str) {
+    fn add_residual(&mut self, s: &str) {
         self.vlog(&format!("[residual] arg = '{}'", s));
         self.residual_args.push(s.into());
     }
 
-    fn addDebugger(&mut self, port: u16) {
-        self.addJava("-Xdebug");
-        self.addJava(&format!("-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address={}", port));
+    fn add_debugger(&mut self, port: u16) {
+        self.add_java("-Xdebug");
+        self.add_java(&format!("-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address={}", port));
     }
 
     // MaxPermSize critical on pre-8 JVMs but incurs noisy warning on 8+
@@ -264,12 +264,12 @@ are not special.
             match arg.as_ref() {
                 "-h" | "-help"           => { self.usage(); exit(1) },
                 "-v"                     => self.verbose = true,
-                "-jvm-debug"             => { let next = next(); require_arg("port", arg, &next); self.addDebugger(next.parse().unwrap()) },
+                "-jvm-debug"             => { let next = next(); require_arg("port", arg, &next); self.add_debugger(next.parse().unwrap()) },
                 "-sbt-jar"               => { let next = next(); require_arg("path", arg, &next); self.sbt_jar = PathBuf::from(next) },
-                s if s.starts_with("-D") => self.addJava(s),
-                s if s.starts_with("-J") => self.addJava(&s[2..]),
-                "new"                    => { self.sbt_new=true; self.sbt_explicit_version=sbt_release_version.to_owned(); self.addResidual(arg) },
-                s                        => self.addResidual(s),
+                s if s.starts_with("-D") => self.add_java(s),
+                s if s.starts_with("-J") => self.add_java(&s[2..]),
+                "new"                    => { self.sbt_new=true; self.sbt_explicit_version=sbt_release_version.to_owned(); self.add_residual(arg) },
+                s                        => self.add_residual(s),
             }
         }
 
