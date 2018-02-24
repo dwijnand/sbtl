@@ -27,6 +27,9 @@ lazy_static! {
     static ref HOME: PathBuf = {
         env::home_dir().expect("failed to get the path of the current user's home directory")
     };
+    static ref WD: PathBuf = {
+        env::current_dir().expect("failed to get the current working directory")
+    };
 }
 
 const sbt_release_version: &'static str = "0.13.16";
@@ -110,7 +113,6 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
 
 struct App {
                   args: Vec<String>,
-           current_dir: PathBuf,
            current_exe: PathBuf,
                sbt_jar: PathBuf,
            sbt_version: String,
@@ -129,11 +131,9 @@ impl App {
     fn from_env() -> App {
         use std::env::*;
         let args = args().collect();
-        let current_dir = current_dir().expect("failed to get the current working directory");
         let current_exe = current_exe().expect("failed to get the full filesystem path of the current running executable");
         App {
                             args: args,
-                     current_dir: current_dir,
                      current_exe: current_exe,
                          sbt_jar: PathBuf::new(),
                      sbt_version: Default::default(),
@@ -292,7 +292,7 @@ are not special.
 
         // verify this is an sbt dir
         if !File::open(PathBuf::from("build.sbt")).is_ok() && !PathBuf::from("project").is_dir() && !self.sbt_new {
-            println!("{pwd} doesn't appear to be an sbt project.", pwd=self.current_dir.display());
+            println!("{pwd} doesn't appear to be an sbt project.", pwd=WD.display());
             exit(1);
         }
 
