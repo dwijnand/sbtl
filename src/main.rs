@@ -30,6 +30,10 @@ lazy_static! {
     static ref WD: PathBuf = {
         env::current_dir().expect("failed to get the current working directory")
     };
+    static ref script_name: String = {
+        let current_exe = env::current_exe().expect("failed to get the full filesystem path of the current running executable");
+        current_exe.file_name().expect("current_exe's file_name should not be '..'").to_string_lossy().into_owned()
+    };
 }
 
 const sbt_release_version: &'static str = "0.13.16";
@@ -113,7 +117,6 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
 
 struct App {
                   args: Vec<String>,
-           current_exe: PathBuf,
                sbt_jar: PathBuf,
            sbt_version: String,
   sbt_explicit_version: String,
@@ -131,10 +134,8 @@ impl App {
     fn from_env() -> App {
         use std::env::*;
         let args = args().collect();
-        let current_exe = current_exe().expect("failed to get the full filesystem path of the current running executable");
         App {
                             args: args,
-                     current_exe: current_exe,
                          sbt_jar: PathBuf::new(),
                      sbt_version: Default::default(),
             sbt_explicit_version: Default::default(),
@@ -151,10 +152,6 @@ impl App {
 
     // TODO: See if this can become a macro
     fn vlog(&self, s: &str) { if self.verbose { eprintln!("{}", s) } }
-
-    fn script_name(&self) -> String {
-        self.current_exe.file_name().unwrap().to_string_lossy().into_owned()
-    }
 
     fn set_sbt_version(&mut self) {
         if self.sbt_explicit_version.is_empty() {
@@ -253,7 +250,7 @@ are not special.
   -Dkey=val        pass -Dkey=val directly to the jvm
   -J-X             pass option -X directly to the jvm (-J is stripped)
 ",
-            script_name=self.script_name(),
+            script_name=*script_name,
             default_jvm_opts=self.default_jvm_opts().join(" "),
         );
     }
@@ -286,7 +283,7 @@ are not special.
         self.vlog(&format!("Detected sbt version {}", self.sbt_version));
 
         if argumentCount == 0 {
-            self.vlog(&format!("Starting {}: invoke with -help for other options", self.script_name()));
+            self.vlog(&format!("Starting {}: invoke with -help for other options", *script_name));
             self.residual_args = vec!["shell".into()];
         }
 
