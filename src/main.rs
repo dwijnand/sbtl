@@ -67,8 +67,8 @@ fn build_props_sbt() -> String {
 fn url_base(version: &str) -> &'static str {
     let ivy_releases_url = "http://repo.typesafe.com/typesafe/ivy-releases";
     let mvn_releases_url = "http://repo.scala-sbt.org/scalasbt/maven-releases";
-//  let ivy_snapshot_url = "http://repo.scala-sbt.org/scalasbt/ivy-snapshots";
-//  let mvn_snapshot_url = "http://repo.scala-sbt.org/scalasbt/maven-snapshots";
+  //let ivy_snapshot_url = "http://repo.scala-sbt.org/scalasbt/ivy-snapshots";
+  //let mvn_snapshot_url = "http://repo.scala-sbt.org/scalasbt/maven-snapshots";
     match version {
         s if s.starts_with("0.7.")  => "http://simple-build-tool.googlecode.com",
         s if s.starts_with("0.10.") => ivy_releases_url,
