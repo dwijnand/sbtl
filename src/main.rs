@@ -34,6 +34,7 @@ lazy_static! {
         let current_exe = env::current_exe().expect("failed to get the full filesystem path of the current running executable");
         current_exe.file_name().expect("current_exe's file_name should not be '..'").to_string_lossy().into_owned()
     };
+    static ref ARGS: Vec<String> = env::args().collect();
 }
 
 const sbt_release_version: &'static str = "0.13.16";
@@ -116,7 +117,6 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
 }
 
 struct App {
-                  args: Vec<String>,
                sbt_jar: PathBuf,
            sbt_version: String,
   sbt_explicit_version: String,
@@ -131,11 +131,8 @@ struct App {
 }
 
 impl App {
-    fn from_env() -> App {
-        use std::env::*;
-        let args = args().collect();
+    fn new() -> App {
         App {
-                            args: args,
                          sbt_jar: Default::default(),
                      sbt_version: Default::default(),
             sbt_explicit_version: Default::default(),
@@ -261,10 +258,9 @@ are not special.
                 die!("{} requires <{}> argument", opt, tpe);
             }
         }
-        let args0 = self.args.clone(); // TODO: See if this clone can be avoided (or at least)
-        let mut args = args0.iter().skip(1); // skip the path of the executable
+        let mut args = (&ARGS).iter().skip(1); // skip the path of the executable
         while let Some(arg) = args.next() {
-            let mut next = || -> String { args.next().unwrap_or(&"".to_string()).to_string() };
+            let mut next = || -> String { args.next().unwrap_or(&"".to_owned()).to_owned() };
             match arg.as_ref() {
                 "-h" | "-help"           => { self.usage(); exit(1) },
                 "-v"                     => self.verbose = true,
@@ -496,5 +492,5 @@ fn talk_to_client() {
 }
 
 fn main() {
-    App::from_env().run();
+    App::new().run();
 }
