@@ -35,6 +35,8 @@ lazy_static! {
         current_exe.file_name().expect("current_exe's file_name should not be '..'").to_string_lossy().into_owned()
     };
     static ref ARGS: Vec<String> = env::args().collect();
+    static ref sbt_launch_dir: PathBuf = PathBuf::from(&*HOME).sub(".sbt/launchers");
+
 }
 
 const sbt_release_version: &'static str = "0.13.16";
@@ -122,7 +124,6 @@ struct App {
   sbt_explicit_version: String,
                verbose: bool,
               java_cmd: String,
-        sbt_launch_dir: PathBuf,
         extra_jvm_opts: Vec<String>,   // args to jvm via files or environment variables
              java_args: Vec<String>,   // pull -J and -D options to give to java
           sbt_commands: Vec<String>,
@@ -138,7 +139,6 @@ impl App {
             sbt_explicit_version: Default::default(),
                          verbose: Default::default(),
                         java_cmd: "java".into(),
-                  sbt_launch_dir: PathBuf::from(&*HOME).sub(".sbt/launchers"),
                   extra_jvm_opts: Default::default(),
                        java_args: Default::default(),
                     sbt_commands: Default::default(),
@@ -209,7 +209,7 @@ impl App {
     }
 
     fn jar_file(&self, version: &str) -> PathBuf {
-        PathBuf::from(&self.sbt_launch_dir).sub(version).sub("sbt-launch.jar")
+        PathBuf::from(&*sbt_launch_dir).sub(version).sub("sbt-launch.jar")
     }
 
     fn acquire_sbt_jar(&mut self) -> bool {
