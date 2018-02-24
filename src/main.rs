@@ -8,8 +8,7 @@
 #![allow(unused_imports)]
 //#![allow(unused_variables)]
 
-#[macro_use]
-extern crate lazy_static;
+const sbt_release_version: &'static str = "0.13.16";
 
 use std::env;
 use std::ffi::OsStr;
@@ -23,6 +22,18 @@ use std::os::unix::process::CommandExt;
 use std::path::{ Path, PathBuf, };
 use std::process::{ Command, exit, };
 
+extern crate curl;
+
+extern crate jsonrpc_lite;
+use jsonrpc_lite::JsonRpc;
+
+#[macro_use]
+extern crate lazy_static;
+
+#[macro_use]
+extern crate serde_json;
+use serde_json::Value;
+
 lazy_static! {
     static ref HOME: PathBuf = {
         env::home_dir().expect("failed to get the path of the current user's home directory")
@@ -35,40 +46,13 @@ lazy_static! {
         current_exe.file_name().expect("current_exe's file_name should not be '..'").to_string_lossy().into_owned()
     };
     static ref ARGS: Vec<String> = env::args().collect();
-    static ref sbt_launch_dir: PathBuf = PathBuf::from(&*HOME).sub(".sbt/launchers");
-
+    static ref sbt_launch_dir: PathBuf = PathBuf::from(&*HOME).join(".sbt/launchers");
 }
-
-const sbt_release_version: &'static str = "0.13.16";
-
-const build_props: &'static str = "project/build.properties";
-
-const sbt_launch_ivy_release_repo: &'static str = "http://repo.typesafe.com/typesafe/ivy-releases";
-const sbt_launch_mvn_release_repo: &'static str = "http://repo.scala-sbt.org/scalasbt/maven-releases";
-
-const default_jvm_opts_common: [&'static str; 3] = ["-Xms512m", "-Xmx1536m", "-Xss2m"];
-
-#[macro_use] extern crate serde_json;
-use serde_json::Value;
-
-extern crate jsonrpc_lite;
-use jsonrpc_lite::JsonRpc;
 
 macro_rules! die(($($arg:tt)*) => (println!("Aborting {}", format!($($arg)*)); ::std::process::exit(1);));
 
-trait PathExt {
-    fn sub<P: AsRef<Path>>(self, path: P) -> Self;
-}
-
-impl PathExt for PathBuf {
-    fn sub<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.push(path.as_ref());
-        self
-    }
-}
-
 fn build_props_sbt() -> String {
-    File::open(build_props)
+    File::open("project/build.properties")
         .ok()
         .and_then(|f|
             BufReader::new(f)
@@ -80,15 +64,21 @@ fn build_props_sbt() -> String {
         .unwrap_or("".to_owned())
 }
 
-fn url_base(version: &str) -> &'static str { match version {
-    s if s.starts_with("0.7.")  => "http://simple-build-tool.googlecode.com",
-    s if s.starts_with("0.10.") => sbt_launch_ivy_release_repo,
-    "0.11.1" | "0.11.2"         => sbt_launch_ivy_release_repo,
- // "0.*-yyyymmdd-hhMMss"       => sbt_launch_ivy_snapshot_repo, // https://repo.scala-sbt.org/scalasbt/ivy-snapshots
-    s if s.starts_with("0.")    => sbt_launch_ivy_release_repo,
- // "*-yyyymmdd-hhMMss"         => sbt_launch_mvn_snapshot_repo, // http://repo.scala-sbt.org/scalasbt/maven-snapshots
-    _                           => sbt_launch_mvn_release_repo,
-} }
+fn url_base(version: &str) -> &'static str {
+    let ivy_releases_url = "http://repo.typesafe.com/typesafe/ivy-releases";
+    let mvn_releases_url = "http://repo.scala-sbt.org/scalasbt/maven-releases";
+//  let ivy_snapshot_url = "http://repo.scala-sbt.org/scalasbt/ivy-snapshots";
+//  let mvn_snapshot_url = "http://repo.scala-sbt.org/scalasbt/maven-snapshots";
+    match version {
+        s if s.starts_with("0.7.")  => "http://simple-build-tool.googlecode.com",
+        s if s.starts_with("0.10.") => ivy_releases_url,
+        "0.11.1" | "0.11.2"         => ivy_releases_url,
+    //  "0.*-yyyymmdd-hhMMss"       => ivy_snapshot_url,
+        s if s.starts_with("0.")    => ivy_releases_url,
+    //  "*-yyyymmdd-hhMMss"         => mvn_snapshot_url,
+        _                           => mvn_releases_url,
+    }
+}
 
 fn make_url(version: &str) -> String {
     let base = url_base(version);
@@ -101,6 +91,10 @@ fn make_url(version: &str) -> String {
     }
 }
 
+fn jar_file(version: &str) -> PathBuf {
+    PathBuf::from(&*sbt_launch_dir).join(version).join("sbt-launch.jar")
+}
+
 fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
     eprintln!("Downloading sbt launcher for {}:", sbt_version);
     eprintln!("  From  {}", url);
@@ -108,7 +102,6 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
 
     fs::create_dir_all(jar.parent().unwrap()).unwrap();
 
-    extern crate curl;
     let mut jar2 = BufWriter::new(File::create(jar).unwrap());
     let mut easy = curl::easy::Easy::new();
     easy.follow_location(true).unwrap();
@@ -120,14 +113,14 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
 
 #[derive(Default)]
 struct App {
-           sbt_version: String,
-  sbt_explicit_version: String,
-               verbose: bool,
-              java_cmd: String,
-              jvm_opts: Vec<String>,   // pull -J and -D options to give to java
-               sbt_jar: PathBuf,
-               sbt_new: bool,
-         residual_args: Vec<String>,
+             sbt_version: String,
+    sbt_explicit_version: String,
+                 verbose: bool,
+                java_cmd: String,
+                jvm_opts: Vec<String>,   // pull -J and -D options to give to java
+                 sbt_jar: PathBuf,
+                 sbt_new: bool,
+           residual_args: Vec<String>,
 }
 
 impl App {
@@ -168,13 +161,11 @@ impl App {
     // MaxPermSize critical on pre-8 JVMs but incurs noisy warning on 8+
     fn default_jvm_opts(&self) -> Vec<String> {
         // TODO: Don't add MaxPermSize if on Java 8+
-        let mut opts: Vec<&'static str> = Vec::with_capacity(default_jvm_opts_common.len() + 1);
-        opts.push("-XX:MaxPermSize=384m");
-        opts.extend_from_slice(&default_jvm_opts_common);
-        opts.iter().map(|x| x.to_string()).collect()
+        let opts = ["-XX:MaxPermSize=384m", "-Xms512m", "-Xmx1536m", "-Xss2m"];
+        opts.iter().map(|s| s.to_string()).collect()
     }
 
-    fn execRunner<S: AsRef<OsStr>>(&self, args: &[S]) {
+    fn exec_runner<S: AsRef<OsStr>>(&self, args: &[S]) {
         self.vlog("# Executing command line:");
         if self.verbose {
             for arg in args {
@@ -199,20 +190,16 @@ impl App {
         exit(-1)
     }
 
-    fn jar_file(&self, version: &str) -> PathBuf {
-        PathBuf::from(&*sbt_launch_dir).sub(version).sub("sbt-launch.jar")
-    }
-
     fn acquire_sbt_jar(&mut self) -> bool {
         ({
-            self.sbt_jar = self.jar_file(&self.sbt_version);
+            self.sbt_jar = jar_file(&self.sbt_version);
             File::open(self.sbt_jar.as_path()).is_ok()
         }) || ({
             self.sbt_jar = PathBuf::from(&*HOME);
             self.sbt_jar.push(format!(".ivy2/local/org.scala-sbt/sbt-launch/{}/jars/sbt-launch.jar", self.sbt_version));
             File::open(self.sbt_jar.as_path()).is_ok()
         }) || ({
-            self.sbt_jar = self.jar_file(&self.sbt_version);
+            self.sbt_jar = jar_file(&self.sbt_version);
             download_url(&self.sbt_version, &make_url(&self.sbt_version), &self.sbt_jar)
         })
     }
@@ -263,12 +250,12 @@ are not special.
             }
         }
 
-        let argumentCount = self.residual_args.len();
+        let args_count = self.residual_args.len();
 
         self.set_sbt_version();
         self.vlog(&format!("Detected sbt version {}", self.sbt_version));
 
-        if argumentCount == 0 {
+        if args_count == 0 {
             self.vlog(&format!("Starting {}: invoke with -help for other options", *script_name));
             self.residual_args = vec!["shell".into()];
         }
@@ -287,16 +274,16 @@ are not special.
         };
 
         self.vlog("Using default jvm options");
-        let extra_jvm_opts=self.default_jvm_opts();
+        let default_jvm_opts=self.default_jvm_opts();
 
         let mut exec_args: Vec<&OsStr> = Vec::new();
         exec_args.push(self.java_cmd.as_ref());
-        exec_args.append(&mut extra_jvm_opts.iter().map(AsRef::as_ref).collect());
+        exec_args.append(&mut default_jvm_opts.iter().map(AsRef::as_ref).collect());
         exec_args.append(&mut self.jvm_opts.iter().map(AsRef::as_ref).collect());
         exec_args.append(&mut vec!["-jar".as_ref(), self.sbt_jar.as_ref()]);
         exec_args.append(&mut self.residual_args.iter().map(AsRef::as_ref).collect());
 
-        self.execRunner(&exec_args)
+        self.exec_runner(&exec_args)
     }
 }
 
