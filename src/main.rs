@@ -118,32 +118,23 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
     File::open(jar).is_ok()
 }
 
+#[derive(Default)]
 struct App {
-               sbt_jar: PathBuf,
            sbt_version: String,
   sbt_explicit_version: String,
                verbose: bool,
               java_cmd: String,
-        extra_jvm_opts: Vec<String>,   // args to jvm via files or environment variables
-             java_args: Vec<String>,   // pull -J and -D options to give to java
-          sbt_commands: Vec<String>,
-         residual_args: Vec<String>,
+              jvm_opts: Vec<String>,   // pull -J and -D options to give to java
+               sbt_jar: PathBuf,
                sbt_new: bool,
+         residual_args: Vec<String>,
 }
 
 impl App {
-    fn new() -> App {
+    fn new() -> Self {
         App {
-                         sbt_jar: Default::default(),
-                     sbt_version: Default::default(),
-            sbt_explicit_version: Default::default(),
-                         verbose: Default::default(),
-                        java_cmd: "java".into(),
-                  extra_jvm_opts: Default::default(),
-                       java_args: Default::default(),
-                    sbt_commands: Default::default(),
-                   residual_args: Default::default(),
-                         sbt_new: Default::default(),
+            java_cmd: "java".into(),
+            ..Default::default()
         }
     }
 
@@ -159,9 +150,9 @@ impl App {
         if self.sbt_version.is_empty() { self.sbt_version=sbt_release_version.to_owned() }
     }
 
-    fn add_java(&mut self, s: &str) {
+    fn add_jvm_opt(&mut self, s: &str) {
         self.vlog(&format!("[java] arg = '{}'", s));
-        self.java_args.push(s.into());
+        self.jvm_opts.push(s.into());
     }
 
     fn add_residual(&mut self, s: &str) {
@@ -170,8 +161,8 @@ impl App {
     }
 
     fn add_debugger(&mut self, port: u16) {
-        self.add_java("-Xdebug");
-        self.add_java(&format!("-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address={}", port));
+        self.add_jvm_opt("-Xdebug");
+        self.add_jvm_opt(&format!("-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address={}", port));
     }
 
     // MaxPermSize critical on pre-8 JVMs but incurs noisy warning on 8+
@@ -242,7 +233,6 @@ are not special.
   -sbt-jar <path>    use the specified jar as the sbt launcher
 
   # passing options to the jvm - note it does NOT use JAVA_OPTS due to pollution
-  # The default set is used if JVM_OPTS is unset and no -jvm-opts file is found
   <default>        {default_jvm_opts}
   -Dkey=val        pass -Dkey=val directly to the jvm
   -J-X             pass option -X directly to the jvm (-J is stripped)
@@ -266,8 +256,8 @@ are not special.
                 "-v"                     => self.verbose = true,
                 "-jvm-debug"             => { let next = next(); require_arg("port", arg, &next); self.add_debugger(next.parse().unwrap()) },
                 "-sbt-jar"               => { let next = next(); require_arg("path", arg, &next); self.sbt_jar = PathBuf::from(next) },
-                s if s.starts_with("-D") => self.add_java(s),
-                s if s.starts_with("-J") => self.add_java(&s[2..]),
+                s if s.starts_with("-D") => self.add_jvm_opt(s),
+                s if s.starts_with("-J") => self.add_jvm_opt(&s[2..]),
                 "new"                    => { self.sbt_new=true; self.sbt_explicit_version=sbt_release_version.to_owned(); self.add_residual(arg) },
                 s                        => self.add_residual(s),
             }
@@ -297,14 +287,13 @@ are not special.
         };
 
         self.vlog("Using default jvm options");
-        self.extra_jvm_opts=self.default_jvm_opts();
+        let extra_jvm_opts=self.default_jvm_opts();
 
         let mut exec_args: Vec<&OsStr> = Vec::new();
         exec_args.push(self.java_cmd.as_ref());
-        exec_args.append(&mut self.extra_jvm_opts.iter().map(AsRef::as_ref).collect());
-        exec_args.append(&mut self.java_args.iter().map(AsRef::as_ref).collect());
+        exec_args.append(&mut extra_jvm_opts.iter().map(AsRef::as_ref).collect());
+        exec_args.append(&mut self.jvm_opts.iter().map(AsRef::as_ref).collect());
         exec_args.append(&mut vec!["-jar".as_ref(), self.sbt_jar.as_ref()]);
-        exec_args.append(&mut self.sbt_commands.iter().map(AsRef::as_ref).collect());
         exec_args.append(&mut self.residual_args.iter().map(AsRef::as_ref).collect());
 
         self.execRunner(&exec_args)
