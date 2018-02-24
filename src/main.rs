@@ -136,7 +136,7 @@ impl App {
         let args = args().collect();
         App {
                             args: args,
-                         sbt_jar: PathBuf::new(),
+                         sbt_jar: Default::default(),
                      sbt_version: Default::default(),
             sbt_explicit_version: Default::default(),
                          verbose: Default::default(),
