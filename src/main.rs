@@ -36,6 +36,17 @@ use jsonrpc_lite::JsonRpc;
 
 macro_rules! die(($($arg:tt)*) => (println!("Aborting {}", format!($($arg)*)); ::std::process::exit(1);));
 
+trait PathOps {
+    fn sub<P: AsRef<Path>>(self, path: P) -> Self;
+}
+
+impl PathOps for PathBuf {
+    fn sub<P: AsRef<Path>>(mut self, path: P) -> Self {
+        self.push(path.as_ref());
+        self
+    }
+}
+
 fn build_props_sbt() -> String {
     File::open(build_props)
         .ok()
@@ -123,7 +134,7 @@ impl App {
             sbt_explicit_version: Default::default(),
                          verbose: Default::default(),
                         java_cmd: "java".into(),
-                  sbt_launch_dir: { let mut p = home_dir_clone; p.push(".sbt/launchers"); p },
+                  sbt_launch_dir: PathBuf::from(home_dir_clone).sub(".sbt/launchers"),
                   extra_jvm_opts: Default::default(),
                        java_args: Default::default(),
                     sbt_commands: Default::default(),
@@ -198,10 +209,7 @@ impl App {
     }
 
     fn jar_file(&self, version: &str) -> PathBuf {
-        let mut p = PathBuf::from(&self.sbt_launch_dir);
-        p.push(version);
-        p.push("sbt-launch.jar");
-        p
+        PathBuf::from(&self.sbt_launch_dir).sub(version).sub("sbt-launch.jar")
     }
 
     fn acquire_sbt_jar(&mut self) -> bool {
