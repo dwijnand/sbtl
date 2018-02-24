@@ -178,14 +178,8 @@ pub fn talk_to_client(port_file: File) {
     let mut reader = BufReader::new(stream);
     handle_msg_quietly(&mut reader);
 
-    let args1 = env::args().skip(1); // skip the path of the executable
-    let command_line = {
-        // TODO: Make mk_string
-        let mut s = args1.take(1).fold(String::new(), |acc, x| acc + &x + " ");
-        let len = s.len() - 1;
-        s.truncate(len);
-        s
-    };
+    let mut args = env::args().skip(1); // skip the path of the executable
+    let command_line = args.nth(0).expect("at least one argument to sbt when server already running");
     let json_str2 = make_lsp_json_str("sbt/exec", json!({"commandLine": command_line})).unwrap();
     let mut stream2 = UnixStream::connect(socket_file_path).unwrap();
     stream2.write_all(json_str2.as_bytes()).unwrap();
