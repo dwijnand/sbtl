@@ -53,11 +53,11 @@ use jsonrpc_lite::JsonRpc;
 
 macro_rules! die(($($arg:tt)*) => (println!("Aborting {}", format!($($arg)*)); ::std::process::exit(1);));
 
-trait PathOps {
+trait PathExt {
     fn sub<P: AsRef<Path>>(self, path: P) -> Self;
 }
 
-impl PathOps for PathBuf {
+impl PathExt for PathBuf {
     fn sub<P: AsRef<Path>>(mut self, path: P) -> Self {
         self.push(path.as_ref());
         self
