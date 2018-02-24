@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
-#![allow(non_snake_case)]
 //#![allow(unused_assignments)]
 #![allow(unused_imports)]
 //#![allow(unused_variables)]
@@ -43,7 +42,7 @@ enum LspHeader {
 
 /// Given a reference to a reader, attempts to read a Language Server Protocol message,
 /// blocking until a message is received.
-pub fn read_message<B: BufRead>(reader: &mut B) -> Value {
+fn read_message<B: BufRead>(reader: &mut B) -> Value {
     let mut buffer = String::new();
     let mut content_length: Option<usize> = None;
 
@@ -165,17 +164,13 @@ fn handle_msg_to_exit_code<B: BufRead>(mut reader: B) -> ExitCode {
     }
 }
 
-fn talk_to_client() {
-    use std::env::*;
-
-    // TODO: Figure out a way to indicate the port file in the error message
-    let portFile = File::open("project/target/active.json").expect("failed to open port file");
-    let json: serde_json::Value = serde_json::de::from_reader(portFile).unwrap();
+pub fn talk_to_client(port_file: File) {
+    let json: serde_json::Value = serde_json::de::from_reader(port_file).unwrap();
     let uri = json["uri"].as_str().unwrap();
     // TODO: Use a less idiotic way to get the path from the URI
-    let socketFilePath = &uri[8..];
+    let socket_file_path = &uri[8..];
 
-    let mut stream = UnixStream::connect(socketFilePath).unwrap();
+    let mut stream = UnixStream::connect(socket_file_path).unwrap();
     let json_str = make_lsp_json_str("initialize", json!({})).unwrap();
     stream.write_all(json_str.as_bytes()).unwrap();
     stream.flush().unwrap();
@@ -183,16 +178,16 @@ fn talk_to_client() {
     let mut reader = BufReader::new(stream);
     handle_msg_quietly(&mut reader);
 
-    let args1 = args().skip(1); // skip the path of the executable
-    let commandLine = {
+    let args1 = env::args().skip(1); // skip the path of the executable
+    let command_line = {
         // TODO: Make mk_string
         let mut s = args1.take(1).fold(String::new(), |acc, x| acc + &x + " ");
         let len = s.len() - 1;
         s.truncate(len);
         s
     };
-    let json_str2 = make_lsp_json_str("sbt/exec", json!({"commandLine": commandLine})).unwrap();
-    let mut stream2 = UnixStream::connect(socketFilePath).unwrap();
+    let json_str2 = make_lsp_json_str("sbt/exec", json!({"commandLine": command_line})).unwrap();
+    let mut stream2 = UnixStream::connect(socket_file_path).unwrap();
     stream2.write_all(json_str2.as_bytes()).unwrap();
     stream2.flush().unwrap();
 
