@@ -8,6 +8,10 @@
 #![allow(unused_imports)]
 //#![allow(unused_variables)]
 
+#[macro_use]
+extern crate lazy_static;
+
+use std::env;
 use std::ffi::OsStr;
 use std::fmt::Display;
 use std::fs;
@@ -18,6 +22,12 @@ use std::os::unix::net::UnixStream;
 use std::os::unix::process::CommandExt;
 use std::path::{ Path, PathBuf, };
 use std::process::{ Command, exit, };
+
+lazy_static! {
+    static ref HOME: PathBuf = {
+        env::home_dir().expect("failed to get the path of the current user's home directory")
+    };
+}
 
 const sbt_release_version: &'static str = "0.13.16";
 
@@ -99,7 +109,6 @@ fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
 }
 
 struct App {
-              home_dir: PathBuf,
                   args: Vec<String>,
            current_dir: PathBuf,
            current_exe: PathBuf,
@@ -119,13 +128,10 @@ struct App {
 impl App {
     fn from_env() -> App {
         use std::env::*;
-        let home_dir = home_dir().expect("failed to get the path of the current user's home directory");
         let args = args().collect();
         let current_dir = current_dir().expect("failed to get the current working directory");
         let current_exe = current_exe().expect("failed to get the full filesystem path of the current running executable");
-        let home_dir_clone = home_dir.clone(); // TODO: See if this can be inlined
         App {
-                        home_dir: home_dir,
                             args: args,
                      current_dir: current_dir,
                      current_exe: current_exe,
@@ -134,7 +140,7 @@ impl App {
             sbt_explicit_version: Default::default(),
                          verbose: Default::default(),
                         java_cmd: "java".into(),
-                  sbt_launch_dir: PathBuf::from(home_dir_clone).sub(".sbt/launchers"),
+                  sbt_launch_dir: PathBuf::from(&*HOME).sub(".sbt/launchers"),
                   extra_jvm_opts: Default::default(),
                        java_args: Default::default(),
                     sbt_commands: Default::default(),
@@ -217,7 +223,7 @@ impl App {
             self.sbt_jar = self.jar_file(&self.sbt_version);
             File::open(self.sbt_jar.as_path()).is_ok()
         }) || ({
-            self.sbt_jar = PathBuf::from(&self.home_dir);
+            self.sbt_jar = PathBuf::from(&*HOME);
             self.sbt_jar.push(format!(".ivy2/local/org.scala-sbt/sbt-launch/{}/jars/sbt-launch.jar", self.sbt_version));
             File::open(self.sbt_jar.as_path()).is_ok()
         }) || ({
