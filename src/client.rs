@@ -170,7 +170,16 @@ pub fn talk_to_client(port_file: File) {
     // TODO: Use a less idiotic way to get the path from the URI
     let socket_file_path = &uri[8..];
 
-    let mut stream = UnixStream::connect(socket_file_path).unwrap();
+    match UnixStream::connect(socket_file_path) {
+        Ok(stream) => talk_to_client_impl(socket_file_path, stream),
+        Err(_)     => {
+            fs::remove_file("project/target/active.json").expect("Failed to delete port file");
+            ::main()
+        },
+    }
+}
+
+fn talk_to_client_impl<P: AsRef<Path>>(socket_file_path: P, mut stream: UnixStream) {
     let json_str = make_lsp_json_str("initialize", json!({})).unwrap();
     stream.write_all(json_str.as_bytes()).unwrap();
     stream.flush().unwrap();
