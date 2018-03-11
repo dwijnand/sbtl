@@ -1,11 +1,10 @@
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
-#![allow(non_snake_case)]
 //#![allow(unused_assignments)]
 #![allow(unused_imports)]
 //#![allow(unused_variables)]
 
-const sbt_release_version: &'static str = "0.13.16";
+const sbt_release_version: &str = "0.13.16";
 
 use std::env;
 use std::ffi::OsStr;
@@ -46,9 +45,9 @@ fn build_props_sbt() -> String {
                 .lines()
                 .map(|l| l.expect("reading lines from build properties wouldn't fail"))
                 .find(|l| l.starts_with("sbt.version"))
-                .map(|l| l.split("=").nth(1).expect("an sbt version on the right of sbt.version=").trim().to_owned())
+                .map(|l| l.split('=').nth(1).expect("an sbt version on the right of sbt.version=").trim().to_owned())
         )
-        .unwrap_or("".to_owned())
+        .unwrap_or_else(|| "".to_owned())
 }
 
 fn url_base(version: &str) -> &'static str {
@@ -159,7 +158,7 @@ impl Launcher {
                 let arg = arg.as_ref();
                 if !arg.is_empty() {
                     let arg = arg.to_string_lossy();
-                    if arg.contains(" ") {
+                    if arg.contains(' ') {
                         eprintln!("\"{}\"", arg)
                     } else {
                         eprintln!("{}", arg)
@@ -193,7 +192,7 @@ impl Launcher {
 
     fn usage(&mut self) {
         self.set_sbt_version();
-        print!("\
+        println!("\
 Usage: {script_name} [options]
 
 Note that options which are passed along to sbt begin with -- whereas
@@ -209,11 +208,10 @@ are not special.
   # passing options to the jvm - note it does NOT use JAVA_OPTS due to pollution
   <default>        {default_jvm_opts}
   -Dkey=val        pass -Dkey=val directly to the jvm
-  -J-X             pass option -X directly to the jvm (-J is stripped)
-",
+  -J-X             pass option -X directly to the jvm (-J is stripped)",
             script_name=*script_name,
             default_jvm_opts=self.default_jvm_opts().join(" "),
-        );
+        )
     }
 
     pub fn run(&mut self) {

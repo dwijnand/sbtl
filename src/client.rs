@@ -22,7 +22,7 @@ use jsonrpc_lite::JsonRpc;
 use serde_json;
 use serde_json::Value;
 
-fn make_lsp_json_str(method: &str, params: Value) -> Result<String, serde_json::error::Error> {
+fn make_lsp_json_str(method: &str, params: &Value) -> Result<String, serde_json::error::Error> {
     let msg = json!({
         "jsonrpc": "2.0",
         "id": 1,
@@ -51,7 +51,7 @@ fn read_message<B: BufRead>(reader: &mut B) -> Value {
             buffer.clear();
             reader.read_line(&mut buffer).unwrap();
             match &buffer {
-                s if s.trim().len() == 0 => { break }, // empty line is end of headers
+                s if s.trim().is_empty() => { break }, // empty line is end of headers
                 s => {
                     match parse_header(s) {
                         LspHeader::ContentLength(len) => content_length = Some(len),
@@ -61,7 +61,7 @@ fn read_message<B: BufRead>(reader: &mut B) -> Value {
             };
         }
 
-    let content_length = content_length.ok_or(format!("missing content-length header: {}", buffer)).unwrap();
+    let content_length = content_length.ok_or_else(|| format!("missing content-length header: {}", buffer)).unwrap();
     // message body isn't newline terminated, so we read content_length bytes
     let mut body_buffer = vec![0; content_length];
     reader.read_exact(&mut body_buffer).unwrap();
@@ -69,8 +69,8 @@ fn read_message<B: BufRead>(reader: &mut B) -> Value {
     serde_json::from_str::<Value>(&body).unwrap()
 }
 
-const HEADER_CONTENT_LENGTH: &'static str = "content-length";
-const HEADER_CONTENT_TYPE: &'static str = "content-type";
+const HEADER_CONTENT_LENGTH: &str = "content-length";
+const HEADER_CONTENT_TYPE: &str = "content-type";
 
 /// Given a header string, attempts to extract and validate the name and value parts.
 fn parse_header(s: &str) -> LspHeader {
@@ -180,7 +180,7 @@ pub fn talk_to_client(port_file: File) {
 }
 
 fn talk_to_client_impl<P: AsRef<Path>>(socket_file_path: P, mut stream: UnixStream) {
-    let json_str = make_lsp_json_str("initialize", json!({})).unwrap();
+    let json_str = make_lsp_json_str("initialize", &json!({})).unwrap();
     stream.write_all(json_str.as_bytes()).unwrap();
     stream.flush().unwrap();
 
@@ -189,7 +189,7 @@ fn talk_to_client_impl<P: AsRef<Path>>(socket_file_path: P, mut stream: UnixStre
 
     let mut args = env::args().skip(1); // skip the path of the executable
     let command_line = args.nth(0).expect("at least one argument to sbt when server already running");
-    let json_str2 = make_lsp_json_str("sbt/exec", json!({"commandLine": command_line})).unwrap();
+    let json_str2 = make_lsp_json_str("sbt/exec", &json!({"commandLine": command_line})).unwrap();
     let mut stream2 = UnixStream::connect(socket_file_path).unwrap();
     stream2.write_all(json_str2.as_bytes()).unwrap();
     stream2.flush().unwrap();
