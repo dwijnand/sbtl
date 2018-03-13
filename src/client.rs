@@ -165,7 +165,7 @@ fn handle_msg_to_exit_code<B: BufRead>(mut reader: B) -> ExitCode {
 }
 
 pub fn talk_to_client(port_file: File) {
-    let json: serde_json::Value = serde_json::de::from_reader(port_file).unwrap();
+    let json: serde_json::Value = serde_json::from_reader(port_file).unwrap();
     let uri = json["uri"].as_str().unwrap();
     // TODO: Use a less idiotic way to get the path from the URI
     let socket_file_path = &uri[8..];
@@ -198,5 +198,27 @@ fn talk_to_client_impl<P: AsRef<Path>>(socket_file_path: P, mut stream: UnixStre
     match handle_msg_to_exit_code(reader2) {
         ExitCode::Failure => exit(1),
         ExitCode::Success => exit(0),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use jsonrpc_lite::JsonRpc;
+    use serde_json;
+    use super::*;
+
+    #[test]
+    fn decode_ok() {
+        let msg = r#"{"jsonrpc":"2.0","result":{"commandQueue":["collectAnalyses","shell"],"exitCode":0,"status":"Done"},"id":null}"#;
+        let json = serde_json::from_str::<serde_json::Value>(&msg).unwrap();
+        let json_rpc: JsonRpc = serde_json::from_value(json).expect("is JSON RPC");
+    }
+
+    #[test]
+    #[should_panic(expected = "data did not match any variant of untagged enum JsonRpc")]
+    fn decode_ko() {
+        let msg = r#"{"jsonrpc":"2.0","result":{"commandQueue":["collectAnalyses","shell"],"exitCode":0,"status":"Done"}}"#;
+        let json = serde_json::from_str::<serde_json::Value>(&msg).unwrap();
+        let json_rpc: JsonRpc = serde_json::from_value(json).expect("is JSON RPC");
     }
 }
