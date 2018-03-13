@@ -106,17 +106,45 @@ fn handle_msg<B: BufRead>(mut reader: B) {
 
 enum ExitCode { Success, Failure }
 
-fn handle_msg_to_exit_code<B: BufRead>(mut reader: B) -> ExitCode {
+fn handle_msg_to_exit_code<B: BufRead>(mut reader: B, id: JsonRpcId) -> ExitCode {
     let mut done = false;
     let mut success = false;
     let mut failure = false;
 
     loop {
-        let json_rpc = serde_json::from_value(read_message(&mut reader)).unwrap();
+        let json_rpc: JsonRpc = serde_json::from_value(read_message(&mut reader)).unwrap();
         match json_rpc {
             JsonRpc::Request(ref obj)      => eprintln!("client received unexpected request: {:?}", obj),
-            JsonRpc::Success(ref obj)      => println!("recv success: {:?}", obj),
-            JsonRpc::Error(ref obj)        => println!("recv error: {:?}", obj),
+            JsonRpc::Success(ref obj)      => {
+                let json_id = json_rpc.get_id().unwrap();
+                let id_str = match json_id {
+                    jsonrpc_lite::Id::Num(n)   => n.to_string(),
+                    jsonrpc_lite::Id::Str(s)   => s,
+                    jsonrpc_lite::Id::None(()) => "".to_string(),
+                };
+                if id_str == id.to_string() {
+                    let result = json_rpc.get_result().unwrap();
+                    println!("json_rpc: {:?}", json_rpc);
+                    return ExitCode::Success
+                } else {
+                    println!("recv success: {:?}", obj)
+                }
+            },
+            JsonRpc::Error(ref obj)        => {
+                let json_id = json_rpc.get_id().unwrap();
+                let id_str = match json_id {
+                    jsonrpc_lite::Id::Num(n)   => n.to_string(),
+                    jsonrpc_lite::Id::Str(s)   => s,
+                    jsonrpc_lite::Id::None(()) => "".to_string(),
+                };
+                if id_str == id.to_string() {
+                    let error = json_rpc.get_error().unwrap();
+                    eprintln!("[error] {}", error);
+                    return ExitCode::Failure
+                } else {
+                    println!("recv error: {:?}", obj)
+                }
+            },
             JsonRpc::Notification(ref obj) => {
                 match json_rpc.get_method() {
                     Some("window/logMessage") => {
@@ -197,7 +225,7 @@ fn talk_to_client_impl<P: AsRef<Path>>(socket_file_path: P, mut stream: UnixStre
     stream2.flush().unwrap();
 
     let reader2 = BufReader::new(stream2);
-    match handle_msg_to_exit_code(reader2) {
+    match handle_msg_to_exit_code(reader2, 2) {
         ExitCode::Failure => exit(1),
         ExitCode::Success => exit(0),
     }
