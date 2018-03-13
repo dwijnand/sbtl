@@ -112,9 +112,9 @@ fn handle_msg_to_exit_code<B: BufRead>(mut reader: B) -> ExitCode {
     loop {
         let json_rpc = serde_json::from_value(read_message(&mut reader)).unwrap();
         match json_rpc {
-            JsonRpc::Request(obj)          => eprintln!("client received unexpected request: {:?}", obj),
-            JsonRpc::Success(obj)          => println!("recv success: {:?}", obj),
-            JsonRpc::Error(obj)            => println!("recv error: {:?}", obj),
+            JsonRpc::Request(ref obj)      => eprintln!("client received unexpected request: {:?}", obj),
+            JsonRpc::Success(ref obj)      => println!("recv success: {:?}", obj),
+            JsonRpc::Error(ref obj)        => println!("recv error: {:?}", obj),
             JsonRpc::Notification(ref obj) => {
                 match json_rpc.get_method() {
                     Some("window/logMessage") => {
