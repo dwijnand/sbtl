@@ -240,6 +240,7 @@ mod tests {
         let msg = r#"{"jsonrpc":"2.0","result":{"commandQueue":["collectAnalyses","shell"],"exitCode":0,"status":"Done"},"id":null}"#;
         let json = serde_json::from_str::<serde_json::Value>(&msg).unwrap();
         let json_rpc: JsonRpc = serde_json::from_value(json).expect("is JSON RPC");
+        drop(json_rpc)
     }
 
     #[test]
@@ -248,5 +249,6 @@ mod tests {
         let msg = r#"{"jsonrpc":"2.0","result":{"commandQueue":["collectAnalyses","shell"],"exitCode":0,"status":"Done"}}"#;
         let json = serde_json::from_str::<serde_json::Value>(&msg).unwrap();
         let json_rpc: JsonRpc = serde_json::from_value(json).expect("is JSON RPC");
+        drop(json_rpc)
     }
 }
