@@ -5,6 +5,7 @@ extern crate curl;
 extern crate jsonrpc_lite;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate serde_json;
+extern crate void;
 
 use std::fs::File;
 

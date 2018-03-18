@@ -22,6 +22,8 @@ use jsonrpc_lite::JsonRpc;
 use serde_json;
 use serde_json::Value;
 
+use void::Void;
+
 type JsonRpcId = i64;
 
 fn make_lsp_json_str(id: JsonRpcId, method: &str, params: &Value) -> Result<String, serde_json::error::Error> {
