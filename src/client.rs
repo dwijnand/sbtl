@@ -123,8 +123,6 @@ fn handle_msg_to_exit_code<B: BufRead>(mut reader: B, id: JsonRpcId) -> ExitCode
                     jsonrpc_lite::Id::None(()) => "".to_string(),
                 };
                 if id_str == id.to_string() {
-                    let result = json_rpc.get_result().unwrap();
-                    println!("json_rpc: {:?}", json_rpc);
                     return ExitCode::Success
                 } else {
                     println!("recv success: {:?}", obj)
