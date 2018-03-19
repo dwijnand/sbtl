@@ -19,6 +19,7 @@ use std::path::{ Path, PathBuf, };
 use std::process::{ Command, exit, };
 
 use curl;
+use void::Void;
 
 lazy_static! {
     static ref HOME: PathBuf = {
