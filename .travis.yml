@@ -19,7 +19,7 @@ matrix:
 script:
   - cargo build --verbose
   - cargo test --verbose
-  - ./bin/run-tests --tap ./test
+  - ./bin/run-tests --tap ./test/
 
 notifications:
   email:

@@ -2,6 +2,7 @@
 //! Author: Dale Wijnand <dale.wijnand@gmail.com>
 
 extern crate curl;
+#[macro_use] extern crate duct;
 extern crate jsonrpc_lite;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate serde_json;

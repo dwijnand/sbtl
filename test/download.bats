@@ -2,7 +2,7 @@
 
 load test_helper
 
-setup()    { create_project; stub_java_echo; }
+setup()    { create_project; stub_java; }
 teardown() { unstub java; rm -fr "$TEST_ROOT"/* "$TEST_ROOT"/.sbt; }
 
 launcher_url () {
@@ -26,7 +26,6 @@ Downloading sbt launcher for $version:
   From  $(launcher_url $version)
     To  $TEST_ROOT/.sbt/launchers/$version/sbt-launch.jar
 java
--XX:MaxPermSize=384m
 -Xms512m
 -Xmx1536m
 -Xss2m
