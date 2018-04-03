@@ -216,19 +216,22 @@ are not special.
     }
 
     pub fn run(&mut self) {
-        fn require_arg(tpe: &str, opt: &str, arg: &str) {
-            if arg.is_empty() || &arg[0..1] == "-" {
-                die!("{} requires <{}> argument", opt, tpe);
-            }
-        }
         let mut args = ARGS.iter().skip(1); // skip the path of the executable
         while let Some(arg) = args.next() {
-            let mut next = || args.next().unwrap_or(&String::new()).to_owned();
+            let blank = &String::new();
+            let mut require_arg = |tpe| {
+                let opt = arg;
+                let arg = args.next().unwrap_or(blank);
+                if arg.is_empty() || &arg[0..1] == "-" {
+                    die!("{opt} requires <{type}> argument", opt=opt, type=tpe);
+                }
+                arg
+            };
             match arg.as_ref() {
                 "-h" | "-help"           => { self.usage(); exit(1) },
                 "-v"                     => self.verbose = true,
-                "-jvm-debug"             => { let next = next(); require_arg("port", arg, &next); self.add_debugger(next.parse().unwrap()) },
-                "-sbt-jar"               => { let next = next(); require_arg("path", arg, &next); self.sbt_jar = PathBuf::from(next) },
+                "-jvm-debug"             => { let arg = require_arg("port"); self.add_debugger(arg.parse().unwrap()) },
+                "-sbt-jar"               => { let arg = require_arg("path"); self.sbt_jar = PathBuf::from(arg) },
                 s if s.starts_with("-D") => self.add_jvm_opt(s),
                 s if s.starts_with("-J") => self.add_jvm_opt(&s[2..]),
                 "new"                    => { self.sbt_new=true; self.sbt_explicit_version=sbt_release_version.to_owned(); self.add_residual(arg) },
