@@ -221,9 +221,9 @@ are not special.
                 die!("{} requires <{}> argument", opt, tpe);
             }
         }
-        let mut args = (&ARGS).iter().skip(1); // skip the path of the executable
+        let mut args = ARGS.iter().skip(1); // skip the path of the executable
         while let Some(arg) = args.next() {
-            let mut next = || -> String { args.next().unwrap_or(&"".to_owned()).to_owned() };
+            let mut next = || args.next().unwrap_or(&String::new()).to_owned();
             match arg.as_ref() {
                 "-h" | "-help"           => { self.usage(); exit(1) },
                 "-v"                     => self.verbose = true,
