@@ -3,12 +3,11 @@
 load test_helper
 
 @test "launches sbt" {
-  stub_java_echo
+  stub_java
   run sbt
   assert_success
   assert_output <<EOS
 java
--XX:MaxPermSize=384m
 -Xms512m
 -Xmx1536m
 -Xss2m

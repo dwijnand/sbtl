@@ -19,6 +19,7 @@ use std::path::{ Path, PathBuf, };
 use std::process::{ Command, exit, };
 
 use curl;
+use duct;
 use void::Void;
 
 lazy_static! {
@@ -80,6 +81,19 @@ fn make_url(version: &str) -> String {
 
 fn jar_file(version: &str) -> PathBuf {
     PathBuf::from(&*sbt_launch_dir).join(version).join("sbt-launch.jar")
+}
+
+fn get_java_version(java_cmd: &str) -> String {
+    cmd!(java_cmd, "-version")
+        .stderr_to_stdout()
+        .read()
+        .expect(&format!("failed to execute {java} -version", java=java_cmd))
+        .lines()
+        .filter(|l| l.contains("java version") || l.contains("openjdk version")) // grep -E -e '(java|openjdk) version'
+        .filter_map(|l| l.split_whitespace().nth(2))                             // awk '{ print $3 }'
+        .map(|l| l.chars().filter(|c| c.to_owned() != '"').collect::<String>())  // tr -d \"
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 fn download_url(sbt_version: &str, url: &str, jar: &Path) -> bool {
@@ -145,11 +159,24 @@ impl Launcher {
         self.add_jvm_opt(&format!("-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address={}", port));
     }
 
+    fn java_version(&self) -> u8 {
+        let version = get_java_version(&self.java_cmd);
+        self.vlog(&format!("Detected Java version: {}", version));
+        version[2..3].to_owned().parse().expect("a java version")
+    }
+
     // MaxPermSize critical on pre-8 JVMs but incurs noisy warning on 8+
     fn default_jvm_opts(&self) -> Vec<String> {
-        // TODO: Don't add MaxPermSize if on Java 8+
-        let opts = ["-XX:MaxPermSize=384m", "-Xms512m", "-Xmx1536m", "-Xss2m"];
-        opts.iter().map(|s| s.to_string()).collect()
+        let v = self.java_version();
+        let opts_common = ["-Xms512m", "-Xmx1536m", "-Xss2m"];
+        if v >= 8 {
+            opts_common.iter().map(|s| s.to_string()).collect()
+        } else {
+            let mut opts = Vec::with_capacity(opts_common.len() + 1);
+            opts.push("-XX:MaxPermSize=384m");
+            opts.extend_from_slice(&opts_common);
+            opts.iter().map(|x| x.to_string()).collect()
+        }
     }
 
     fn exec_runner<S: AsRef<OsStr>>(&self, args: &[S]) {
