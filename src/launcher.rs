@@ -24,6 +24,7 @@ use void::Void;
 
 lazy_static! {
     static ref HOME: PathBuf = {
+        #[allow(deprecated)] // TODO: Switch to the dirs crate.
         env::home_dir().expect("failed to get the path of the current user's home directory")
     };
     static ref WD: PathBuf = {
@@ -87,7 +88,7 @@ fn get_java_version(java_cmd: &str) -> String {
     cmd!(java_cmd, "-version")
         .stderr_to_stdout()
         .read()
-        .expect(&format!("failed to execute {java} -version", java=java_cmd))
+        .unwrap_or_else(|_| panic!("failed to execute {java} -version", java=java_cmd))
         .lines()
         .filter(|l| l.contains("java version") || l.contains("openjdk version")) // grep -E -e '(java|openjdk) version'
         .filter_map(|l| l.split_whitespace().nth(2))                             // awk '{ print $3 }'
@@ -277,17 +278,20 @@ are not special.
         }
 
         // verify this is an sbt dir
-        if !File::open(PathBuf::from("build.sbt")).is_ok() && !PathBuf::from("project").is_dir() && !self.sbt_new {
+        if File::open(PathBuf::from("build.sbt")).is_err() && !PathBuf::from("project").is_dir() && !self.sbt_new {
             println!("{pwd} doesn't appear to be an sbt project.", pwd=WD.display());
             exit(1);
         }
 
         // no jar? download it.
-        File::open(self.sbt_jar.as_path()).is_ok() || self.acquire_sbt_jar() || {
-            // still no jar? uh-oh.
-            println!("Download failed. Obtain the jar manually and place it at {}", self.sbt_jar.display());
-            exit(1);
-        };
+        if File::open(self.sbt_jar.as_path()).is_err() {
+            let success = self.acquire_sbt_jar();
+            if !success {
+                // still no jar? uh-oh.
+                println!("Download failed. Obtain the jar manually and place it at {}", self.sbt_jar.display());
+                exit(1);
+            }
+        }
 
         self.vlog("Using default jvm options");
         let default_jvm_opts=self.default_jvm_opts();
