@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 
+set -o pipefail
+
 cd "$(dirname "$0")/.."
 
-cargo build
+die() { echo "Aborting: $*"; exit 1; }
+
+cargo build || die "Failed to cargo build"
 
 [[ $# -gt 0 ]] || set -- ./test
 
