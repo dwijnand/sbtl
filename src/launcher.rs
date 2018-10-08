@@ -92,7 +92,7 @@ fn get_java_version(java_cmd: &str) -> String {
         .lines()
         .filter(|l| l.contains("java version") || l.contains("openjdk version")) // grep -E -e '(java|openjdk) version'
         .filter_map(|l| l.split_whitespace().nth(2))                             // awk '{ print $3 }'
-        .map(|l| l.chars().filter(|c| c.to_owned() != '"').collect::<String>())  // tr -d \"
+        .map(|l| l.chars().filter(|c| c != &'"').collect::<String>())  // tr -d \"
         .collect::<Vec<_>>()
         .join("\n")
 }
