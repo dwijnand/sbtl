@@ -11,6 +11,9 @@ branches:
     - master
     - /^v[0-9]/
 
+env:
+  - CARGO_INCREMENTAL=0
+
 matrix:
   allow_failures:
     - rust: nightly
@@ -20,6 +23,10 @@ script:
   - cargo build --verbose
   - cargo test --verbose
   - ./bin/run-tests --tap ./test/
+
+before_cache:
+  - find ./target/debug -type f -maxdepth 1 -delete
+  - rm -f ./target/debug/deps/*sbtl*
 
 notifications:
   email:
