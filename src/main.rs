@@ -1,12 +1,12 @@
 //! A Rust port of sbt-extras.
 //! Author: Dale Wijnand <dale.wijnand@gmail.com>
 
-extern crate curl;
+use curl;
 #[macro_use] extern crate duct;
-extern crate jsonrpc_lite;
+use jsonrpc_lite;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate serde_json;
-extern crate void;
+use void;
 
 use std::fs::File;
 
