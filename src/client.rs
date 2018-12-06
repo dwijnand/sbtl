@@ -204,7 +204,7 @@ pub fn talk_to_client(port_file: File) {
         Ok(stream) => talk_to_client_impl(socket_file_path, stream),
         Err(_)     => {
             fs::remove_file("project/target/active.json").expect("Failed to delete port file");
-            ::main()
+            crate::main()
         },
     }
 }
